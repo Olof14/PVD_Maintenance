@@ -1,0 +1,2687 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PVD Maintenance Calendar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Noto+Sans+Myanmar:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#f5f6fa;--surface:#ffffff;--surface2:#f0f2f8;--border:#dde1ef;
+  --accent:#2563eb;--text:#1e2340;--muted:#6b7280;
+  --c1m:#2563eb;--c3m:#7c3aed;--c6m:#059669;--csp:#d97706;
+  --ok:#059669;--ng:#dc2626;--chg:#d97706;--radius:9px;
+}
+body.dark{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2335;--border:#2a3050;
+  --accent:#4f8ef7;--text:#e8ecf4;--muted:#7a8aaa;
+  --c1m:#4f8ef7;--c3m:#a78bfa;--c6m:#4fcfa0;--csp:#f7c94f;
+  --ok:#4fcfa0;--ng:#f75f5f;--chg:#f7a24f;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:50;}
+.logo-title{font-size:11px;font-weight:700;line-height:1.5;}
+.logo-sub{font-size:9px;color:var(--muted);}
+.nav-month{display:flex;align-items:center;gap:8px;}
+.nav-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:15px;}
+.nav-btn:hover{background:var(--border);}
+.month-label{font-size:14px;font-weight:600;min-width:130px;text-align:center;font-family:'IBM Plex Mono',monospace;color:var(--accent);}
+
+/* Lang switcher */
+.lang-switcher{display:flex;gap:4px;}
+.lang-btn{padding:4px 6px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);cursor:pointer;transition:transform .1s,border-color .1s;line-height:1;}
+.lang-btn:hover{transform:scale(1.12);}
+.lang-btn.active{border-color:var(--accent);transform:scale(1.1);box-shadow:0 0 0 2px rgba(37,99,235,.25);}
+
+.legend{display:flex;gap:8px;flex-wrap:wrap;}
+.li{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--muted);}
+.ld{width:7px;height:7px;border-radius:50%;}
+
+main{max-width:960px;margin:0 auto;padding:12px 10px 50px;}
+.top-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.tabs{display:flex;gap:5px;flex-wrap:wrap;}
+.tab{padding:5px 12px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted);}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.export-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--ok);background:rgba(79,207,160,.12);color:var(--ok);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;}
+
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-dh{text-align:center;font-size:9px;font-weight:600;color:var(--muted);padding:4px 0;}
+.cal-cell{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);min-height:78px;padding:5px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;overflow:hidden;}
+.cal-cell:hover{border-color:var(--accent);background:var(--surface2);}
+.cal-cell.empty{background:transparent;border-color:transparent;cursor:default;}
+.cal-cell.today{border-color:var(--accent);background:#eff6ff;}
+.cal-cell.sunday{opacity:.4;cursor:default;}
+.cal-cell.has-task::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 var(--radius) var(--radius);}
+.cal-cell.bar-1m::after{background:var(--c1m);}
+.cal-cell.bar-3m::after{background:var(--c3m);}
+.cal-cell.bar-6m::after{background:var(--c6m);}
+.cal-cell.bar-sp::after{background:var(--csp);}
+.cal-cell.bar-mix::after{background:linear-gradient(90deg,var(--c1m),var(--c3m),var(--c6m));}
+.cal-cell.has-overdue{background:rgba(220,38,38,.07);border-color:rgba(220,38,38,.4);}
+.cal-cell.has-overdue:hover{background:rgba(220,38,38,.13);border-color:#dc2626;}
+.cal-cell.has-overdue::before{content:'⚠';position:absolute;top:3px;right:5px;font-size:9px;opacity:.8;}
+.pill-overdue{background:rgba(220,38,38,.18);color:#ef4444;border-left:3px solid #dc2626;animation:overdueFlash 1.8s ease-in-out infinite;}
+.day-num{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:2px;display:flex;align-items:center;gap:3px;}
+.cal-cell.today .day-num{color:var(--accent);}
+.task-pill{font-size:8px;padding:1px 3px;border-radius:3px;margin-bottom:2px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pill-1m{background:rgba(79,142,247,.18);color:#89b8ff;}
+.pill-3m{background:rgba(167,139,250,.18);color:#c4aeff;}
+.pill-6m{background:rgba(79,207,160,.15);color:#7de8c4;}
+.pill-sp{background:rgba(247,201,79,.15);color:#f7d97a;}
+.more{font-size:8px;color:var(--muted);}
+.done-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:flex-start;justify-content:center;padding:16px 10px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.7);margin:auto;}
+.mh{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;}
+.mdate{font-size:18px;font-weight:700;color:var(--accent);font-family:'IBM Plex Mono',monospace;}
+.mdatesub{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.6;}
+.mcl{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+.mb{padding:12px 14px 16px;}
+.sl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px;}
+.sl:first-child{margin-top:0;}
+.tc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;}
+.tc-top{display:flex;gap:8px;align-items:flex-start;}
+.td{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.td.c1m{background:var(--c1m);}.td.c3m{background:var(--c3m);}.td.c6m{background:var(--c6m);}.td.csp{background:var(--csp);}
+.tc-info{flex:1;}
+.tn{font-size:13px;font-weight:700;color:var(--text);line-height:1.4;}
+.tn-sub{font-size:10px;color:var(--muted);margin-top:1px;line-height:1.5;}
+.tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:500;margin-top:4px;margin-right:3px;}
+.tag.cat{background:rgba(255,255,255,.07);color:var(--muted);}
+.tag.std{background:rgba(247,201,79,.12);color:#f7c94f;}
+.tc-log{margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+.log-status{display:flex;gap:6px;margin-bottom:8px;}
+.sbtn{flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;text-align:center;line-height:1.4;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;}
+.sbtn.ok.sel{background:rgba(79,207,160,.2);border-color:var(--ok);color:var(--ok);}
+.sbtn.ng.sel{background:rgba(247,95,95,.2);border-color:var(--ng);color:var(--ng);}
+.sbtn.chg.sel{background:rgba(247,162,79,.2);border-color:var(--chg);color:var(--chg);}
+.comment-box{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 9px;font-size:11px;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;resize:none;margin-bottom:8px;}
+.comment-box:focus{outline:none;border-color:var(--accent);}
+.media-label{font-size:10px;color:var(--muted);margin-bottom:5px;}
+.media-preview{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.media-thumb{position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden;border:1px solid var(--border);}
+.media-thumb img,.media-thumb video{width:100%;height:100%;object-fit:cover;}
+.del-btn{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:16px;text-align:center;padding:0;}
+.upload-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 12px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;width:100%;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent);}
+input[type=file]{display:none;}
+.save-btn{width:100%;padding:10px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;line-height:1.5;}
+.save-btn:hover{background:#3a7aec;}
+.log-saved{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:8px;}
+.log-saved-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.status-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;}
+.badge-ok{background:rgba(79,207,160,.2);color:var(--ok);}
+.badge-ng{background:rgba(247,95,95,.2);color:var(--ng);}
+.badge-chg{background:rgba(247,162,79,.2);color:var(--chg);}
+.log-edit-btn{font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;}
+.log-comment{font-size:11px;color:var(--text);margin-bottom:5px;line-height:1.5;}
+.log-media{display:flex;flex-wrap:wrap;gap:5px;}
+.log-media-thumb{width:52px;height:52px;border-radius:5px;overflow:hidden;border:1px solid var(--border);cursor:pointer;}
+.log-media-thumb img,.log-media-thumb video{width:100%;height:100%;object-fit:cover;}
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;align-items:center;justify-content:center;}
+.lightbox.open{display:flex;}
+.lb-close{position:absolute;top:14px;right:18px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;}
+.notask{text-align:center;color:var(--muted);font-size:12px;padding:24px 0;line-height:2.2;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#f0fdf4;border:1px solid #16a34a;color:#16a34a;padding:10px 20px;border-radius:8px;font-size:12px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.5);line-height:1.6;}
+.page-btn{padding:7px 18px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans Thai','Noto Sans Myanmar',sans-serif;transition:all .15s;}
+.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.dash-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+@media(max-width:620px){.dash-cards{grid-template-columns:repeat(2,1fr);}}
+.dash-card{border-radius:12px;padding:14px 16px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:transform .15s,box-shadow .15s;border-left:4px solid;}
+.dash-card:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.1);}
+.dash-card.red{border-left-color:#dc2626;}
+.dash-card.orange{border-left-color:#ea580c;}
+.dash-card.yellow{border-left-color:#ca8a04;}
+.dash-card.green{border-left-color:#16a34a;}
+.dash-card-icon{font-size:20px;margin-bottom:6px;}
+.dash-card-num{font-size:34px;font-weight:800;font-family:'IBM Plex Mono',monospace;line-height:1;}
+.dash-card-num.red{color:#dc2626;}.dash-card-num.orange{color:#ea580c;}.dash-card-num.yellow{color:#ca8a04;}.dash-card-num.green{color:#16a34a;}
+.dash-card-label{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5;font-weight:600;}
+.dash-section-title{font-size:12px;font-weight:700;color:var(--text);margin:18px 0 8px;display:flex;align-items:center;gap:6px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.spare-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;transition:border-color .15s,background .15s;}
+.spare-row:hover{border-color:var(--accent);}
+.spare-row.row-overdue{background:rgba(220,38,38,.06);border:1.5px solid rgba(220,38,38,.35);border-left:4px solid #dc2626;}
+.task-clickable{transition:background .15s,transform .1s,box-shadow .15s;border-radius:var(--radius);}
+.task-clickable:hover{background:var(--surface2);transform:translateX(2px);box-shadow:2px 0 0 0 var(--accent);}
+.spare-row.row-overdue.task-clickable:hover{background:rgba(220,38,38,.14);}
+.overdue-remark{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:800;color:#dc2626;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.3);border-radius:6px;padding:2px 7px;margin-top:4px;letter-spacing:.02em;animation:overdueFlash 1.8s ease-in-out infinite;}
+@keyframes overdueFlash{0%,100%{opacity:1;}50%{opacity:.55;}}
+.spare-status-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.dot-red{background:#dc2626;box-shadow:0 0 6px rgba(220,38,38,.5);}
+.dot-orange{background:#ea580c;box-shadow:0 0 6px rgba(234,88,12,.5);}
+.dot-yellow{background:#ca8a04;}
+.dot-green{background:#16a34a;}
+.spare-name{flex:1;}
+.spare-name-th{font-size:12px;font-weight:600;color:var(--text);}
+.spare-name-en{font-size:10px;color:var(--muted);margin-top:1px;}
+.spare-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.badge-red{background:rgba(220,38,38,.1);color:#dc2626;border:1px solid rgba(220,38,38,.25);}
+.badge-orange{background:rgba(234,88,12,.1);color:#ea580c;border:1px solid rgba(234,88,12,.25);}
+.badge-yellow{background:rgba(202,138,4,.1);color:#ca8a04;border:1px solid rgba(202,138,4,.25);}
+.badge-green{background:rgba(22,163,74,.1);color:#16a34a;border:1px solid rgba(22,163,74,.25);}
+.spare-days{font-size:10px;color:var(--muted);text-align:right;min-width:80px;line-height:1.5;}
+
+/* Dashboard type filter tabs */
+.dash-type-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.dash-type-tab{padding:6px 14px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;}
+.dash-type-tab:hover{border-color:var(--accent);}
+.dash-type-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* PVD Filter Button & Dropdown */
+.pvd-filter-wrap{position:relative;display:inline-block;}
+.pvd-filter-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.pvd-filter-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pvd-filter-btn.has-filter{border-color:var(--accent);background:rgba(37,99,235,.1);color:var(--accent);}
+.pvd-filter-btn svg{width:12px;height:12px;flex-shrink:0;}
+.pvd-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.18);z-index:100;padding:8px;min-width:160px;}
+.pvd-dropdown.open{display:block;}
+.pvd-dropdown-title{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:2px 4px 6px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.pvd-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);transition:background .1s;}
+.pvd-opt:hover{background:var(--surface2);}
+.pvd-opt.selected{background:var(--surface2);}
+.pvd-opt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pvd-opt-check{margin-left:auto;font-size:12px;color:var(--accent);}
+.pvd-group-header{font-size:11px;font-weight:800;color:var(--text);padding:8px 0 4px;display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);margin-top:8px;}
+.pvd-group-header:first-child{border-top:none;margin-top:0;}
+
+/* Calendar PVD dots */
+.cal-pvd-dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.cal-pvd-row{display:flex;align-items:center;gap:3px;margin-top:2px;flex-wrap:wrap;}
+
+.sev-btn{padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:10px;font-weight:600;cursor:pointer;}
+.sev-btn.sel{background:var(--ng);color:#fff;border-color:var(--ng);}
+/* CA Task rows */
+.ca-row{background:var(--surface);border:1px solid #f97316;border-radius:var(--radius);padding:10px 12px;margin:6px 0;display:flex;align-items:flex-start;gap:10px;}
+.ca-dot{width:10px;height:10px;border-radius:50%;background:#f97316;flex-shrink:0;margin-top:4px;}
+.ca-info{flex:1;}
+.ca-name{font-size:12px;font-weight:700;}
+.ca-detail{font-size:10px;color:var(--muted);margin-top:2px;}
+.ca-status-sel{font-size:10px;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:var(--surface2);color:var(--text);cursor:pointer;margin-top:6px;}
+.ca-status-pending{color:#f97316;}
+.ca-status-inprog{color:#3b82f6;}
+.ca-status-done{color:var(--ok);}
+/* Result summary bar */
+.result-summary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px;padding:8px 12px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);}
+.result-chip{font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:var(--surface2);}
+/* Done section tasks */
+.done-task-row{background:var(--surface);border:1px solid var(--ok);border-radius:var(--radius);padding:8px 12px;margin:4px 0;display:flex;align-items:center;gap:8px;opacity:.85;}
+.task-clickable{transition:background .15s,transform .1s,box-shadow .15s;border-radius:var(--radius);}
+.task-clickable:hover{background:var(--surface2);transform:translateX(2px);box-shadow:2px 0 0 0 var(--accent);}
+
+/* Machine badges */
+.machine-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
+.machine-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--accent);color:#fff;letter-spacing:.3px;}
+.machine-badge.pvd1{background:#2563eb;}
+.machine-badge.pvd3{background:#7c3aed;}
+.machine-badge.pvd4{background:#db2777;}
+.machine-badge.pvd5{background:#d97706;}
+
+/* ===== ADMIN MODE ===== */
+.admin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;}
+.admin-modal{background:var(--surface);border-radius:16px;padding:20px;width:min(96vw,520px);max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.admin-modal h2{font-size:15px;font-weight:800;margin:0 0 14px;color:var(--accent);}
+.admin-section{margin-bottom:18px;}
+.admin-section h3{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;}
+.admin-task-row{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:4px;border:1px solid var(--border);}
+.admin-task-info{flex:1;}
+.admin-task-name{font-size:11px;font-weight:700;}
+.admin-task-sub{font-size:10px;color:var(--muted);}
+.admin-btn{padding:5px 12px;border-radius:8px;border:none;font-size:10px;font-weight:700;cursor:pointer;}
+.admin-btn.edit{background:var(--accent);color:#fff;}
+.admin-btn.del{background:var(--ng);color:#fff;}
+.admin-btn.add{background:var(--ok);color:#fff;width:100%;padding:9px;font-size:12px;margin-top:6px;}
+.admin-btn.close{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.admin-form{display:flex;flex-direction:column;gap:8px;background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border);}
+.admin-form label{font-size:10px;font-weight:700;color:var(--muted);}
+.admin-form input,.admin-form select,.admin-form textarea{padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;width:100%;}
+.admin-form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.admin-pin-box{display:flex;flex-direction:column;gap:10px;align-items:center;padding:20px;}
+.admin-pin-input{font-size:22px;letter-spacing:8px;text-align:center;width:160px;padding:10px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text);}
+.machine-check{display:flex;gap:8px;flex-wrap:wrap;}
+.machine-check label{display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;}
+
+/* Mini Calendar Picker */
+.mini-cal{margin-top:10px;}
+.mini-cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.mini-cal-title{font-size:12px;font-weight:800;color:var(--accent);}
+.mini-cal-nav{background:none;border:1px solid var(--border);border-radius:6px;width:24px;height:24px;cursor:pointer;color:var(--text);font-size:13px;display:flex;align-items:center;justify-content:center;}
+.mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.mini-cal-dh{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:3px 0;}
+.mini-cal-day{font-size:10px;font-weight:600;text-align:center;padding:5px 2px;border-radius:6px;cursor:pointer;border:1.5px solid transparent;transition:all .1s;}
+.mini-cal-day:hover{background:var(--surface2);border-color:var(--border);}
+.mini-cal-day.selected{background:var(--accent);color:#fff !important;border-color:var(--accent);}
+.mini-cal-day.has-task{background:var(--surface2);color:var(--accent);font-weight:800;}
+.mini-cal-day.today-mark{border-color:var(--accent);color:var(--accent);}
+.mini-cal-day.empty{cursor:default;}
+.mini-cal-day.sunday-day{color:var(--ng) !important;opacity:.5;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <img src="data:image/webp;base64,UklGRqJZAABXRUJQVlA4IJZZAABQEgGdASpyAnICAAAAJZ27hd2ERkB/Uvxh8TKqPOPwz/rn+O/xHzK1D+j/bX+3/4P+48PIcL1K9s/oH92/VD++/7T5T/5f8b/oB90PuC/wb+J/zj+q/3n++/3X/5fXr/R/rl8IP6x6B/61/W/8//Yfv4+8D/Df6P2M/2j/Bf8n/GfAB/Ff5D/V/r/+rf2Cv269gH+Mf0j79vln/wX+l/vn7Z/v1+E368/7H/L/uX+//4IfyP+j/dN+///N/AD9//YA/6v//9yj+Afvl7q/U3+mfih5l/y/+gfin/SP8t5kPjH5z+Ff69f3r2kvAR1B5ofxH6X/L/6b+pv9n/zX+O9nP8oPyA9+/lB/U/kd8Av4T/EP59/Vv7v/RP7//sP8H9K8gjid9B6AvrR8z/rn+C/x39n/t3/B/0H1le6f038nvc/66/1T8pf7n9gH8M/jH9C/uf6yf2X/j/VP+Q8G/73/qv2A+AH+KfzP+zf2T/D/5X+8/+/7S/3L/N/3z/Rf7b/D/933oflP9l/zf+B/zn+j/w3/y/AL+K/yr+0f23/Lf5D+5/+P/W/cz6+f2Z/+XuW/rN/sfzsTtBk8abRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMabRMaWTcGXny1ZYN7M9sVjR4hp6SO8V2wWTxptExptExptD3EOf1xaEMTfLY4TwO3huOuLBoRuSLwfE64YRJjTaJjTaJjTYiP2QKlX0d1+d5i9lpFWNUhv/uzdvIpmuZqVAL7aMfMnjTaJifAyDBom+HJiNJ+gifpYsWR4iiqR9pUE7UXyu8pvW+55w8tenzJ402iNxRAB1+V2rYF9GycpqoHw4blbY6lX8mhZPoqC55YNevJDfFRr0+ZPGm0TGlT75TEl/82xLpsGUnA5TY6VFtCR3W6QzHl3jHszuehE5GG0mX3Z0Wu3UJTkz7wa7cGTxptExptEVl32IXiJn33JFwQvR37MyHNLBw6O2azxzQxZeKuBDiQwntV6RzewWuh1yURjg+4s4aNLofbrYQIYlHbF0G0Y+ZPGm0SpcxgPYlfMif3QSlELjv/kUhBYSbR98CgfGt+yYFOlyyPvMk49jag8TKptABQKlRLu/C9KBsBgfl81G3adEJ5vKTBgjsNNomNNomNNiI6Apzj4pzPJ9/Nh2DbgD+LCdYusyh2gVqWsLWeVrEkCKvfSU4HkEs2d02BDwWbAgTH7zeO6eWLCiH+6r+agQZPGm0TGmR65RGRULPpmSY2YmHo8S1twy4Rz0fF066IRydNpwBbZMuo1k6jPwfBPhesr8OTlDYLiffEoHrsQNkxlaSjvptExptExnSjgTvRN3E9UrJrBYhJzGqp2jTxUpTBld93DdnqAK/eNtGtkvtOn9yvU5+aOwigx4uczei0mRaKrIaNcsPE31G3P187pYVmL7aMfMneoDtPy2XWs9RQRavwdJkWrnDZz4MerPKF5n+W/7faZcpgymxo1k5H5bRU70kCBNb06p0h33tfHsOgc6EGt5FBCuOG50SfKf/V+ASpFp3r/4ebP/Z+qerLRXH24aHqbUIQ+jf7yXJbAi5NmWEFGVg8tenyDzakSeeeRyzYYO/5fzMbUpY4lr7Ce/EbcdWhBsI1ZY100kTHMwjr59NdUTrZ1Ua52nghA0iSl/8amuJbRvca1USliT/bZA5Z3T8SSXfWZSgAoze4MnjTaIrLvtMuG1QvGPd8INwYfXUy7W5146/u/ZDogWpJJn0l6m9SdpX7VOTarjEOyzIOPzKBXOvT8sSdIAvU6Uk1V2W2//OmFgw4MnjLW2gk2HG2vLLEBGEAWMUYSDtCAG/rQ5vPqNvCmf2/92TIKfj6AqlFcZca/Lua1/agOX/F8ZWLhO8xeEBiQxmllretyjRE2iY02gBWlzUD4jnBL6WSXWq0V5IGC3Fzy97h60vqYVkv+j4v+ojXDFO87SOI8Z1L80NxrE/7hzyNppibR4LWJRchxjhwMagouqod/lr0+ZPAulTX2iyww9mi28Ot2RN4r5PPzc9XcqCeAxF5jAEZaZSh8U/eW09dbCMCTskSwAL3Uoqucz6EbOVBLYMVWHhDuRj533RMS8B1HHBnzJ402iY02iY02iY02iY02iY02iY01Y9YYMJ1RnJXMe11NocJZGuKGBSY02LGslew6eCYfAnDgDdtG2dMl0jAswzj8wiy23wSpOjXHD/VyIcWCWp5DZTgGu2q7S16ILjgrWob6T1NtHPcbVxs6f2XkxOPHpqO+dH9GKa+ISnjQPM+7i2nWDi8Xt6vxgpFlHDozH+LL7FQzhS4qQV0og8da/7CbchXovTfqiZBDT3R+g0iWIJ47If1xraM4zQ6f3QwHFyvi1hHkAtVRhY4zjKNq1dF1rHm7EL9hHNQ5iSQsqRq3Of+uQQUYSsTPdQMWNcJYRJfAtptCYLDbkYabMIXNd9sa7q0/oZqQcsJxkCFrwh7KsGrTzFaZFZCFV22hWRiiS2ZQJWFmM+tSDSUso6xZYhPNQ7viZ+wS8KwLI+Dgtg4+ko8j/FA4uDJ402iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iY02iYywAP7//vbngAAAAAAAAAAAAAAAAAAJmRvLGahKe/wmAVIuFFx3IsoTCRMXc6KyzRZxniSK0B7x7jsYdhAEDflnJ7sVB7mqRL54hr6HXhFW645S82JW0i7yHQ5Or1oB8d1LAVR5BJh84nA3cEqrJBiVeVm6OFRnFxoYnC5Yx81kGKnwOzP+uxkKfQ27X0V7P6KY70XUfKBPEkPvHchNwEE+rwyRx+2ly0do8L27o3BXWmpZCFSmG8ublwpMtssYOtnvUZwbNQU6jU/0YxJ0ng+wS6oSN3wXpPjVr/D7kxwgg5ozTBinD/pA4yi0XQh4VHtNjhoRPxEFVvXQcBp/gsSsYUEJ+rEw3+CNLKxZ6GffbwCE8dMa3ZMPlEi57/h+2lRV62N90jNFWXe//+DnZcCdD1Ys7q76/dff5dCcrpLTzybL44gZ2mTw5Pa9ed5Vrikua88xikv3DJmPSYxG4AhCU5kCgHd8pNltyZEuVJVOnCvgPGYCk0RrlOMYWez5HbO9twAEJVbYT2i9T+cbQfh9jwlGn76XlWeD1XfYzZvQwK8bkOlg2Dm0j4AP4xiTBwca4qoMfAZZTGow13EzQ4Fana54EWUqQULsTwFRei/eH1ddFb2ZiGwOyp3k971WROVGM8NYUN45uCRNS41pKh4U+CmNctQfP1WgxypCfSILmqAsgMD2jDUzvpC9GssOUHZ4mU8OysDUAaIp8+AekHYJiPR8QESHRHnN//3K00HLdmNl51IWrCzY/TPbzKicp1gAlutyWdVDttTrx4g+kQF+1EJyYCOItxws5WPxCLjeiUoG1sMoAAdHwv5RvYybfNf9Y9PlG/mKnY7w+1V9ytzCs2vyGoZIE03wJw3rvuPXMJtBEf6ZlM7216yHYKVW5u0uXjczkLtvgAslzJJdc54pjhn/oOeNkNPaP7KbfUjOw337ina1i9TYkfry4wpM305OtaQEK2dI5wdSwYv0a5RVnyDqMKjwwNJY++TwHbS2q4mNdTUxAIKUc8m5MtaKlDtBCP2jsoXJRiyWf7wGIKzAvtXsNGRYCy2AsiVogO4VfLSXDhNmEmA6RbZF+UHtPey58IACzxLqgTuy7/POXI7nlLqbBuuH0G/iDcVbMrduZjvDUTEePnNRN2GBERLR7ujvNJNhVSwPm31DS5svrk31KpKeQKdtfCuRz5VrJoDOycrV8eaCJbBDnQbWhx8Sr8BtUs5yPFOnr1kWMSHTVFCuxXTc8E8jKbA+syruOIA8+slwEkJshn1tvCacFB055nz9dNCIkAC6dXaMtQHLsBuw7bIAvKXiVh3WNxK59AV+XoxuQbX5nxtmydfIyWe2pvUGh58HIYc0LwT8F9psixN5BF4geUOvcjzNVsHLWhY/95mVJFHDc6dBW7YGPW5GtV5h9wRjI3itjbDLxUZki0YKdddjC8Ri2sER5zy0AwcE9si1izDwJ/+XDZ1QuiGE4OypmfpsLKyyJaA0zLIoo5b8miToVGRQgDIvfonpD6I+YhiK/ip5270FkTtc8sKrOodXYgyjOcZtCW47wW3cEBm26BaUfrV7ELR5rXEFL3XLgtvptZIElNSyaBlLh2jSwIhlW+BpARe4xMd/pehz/NYyvP6W/wKQv+3t1XMHJNJYfuwOkEiPtdXx4xafswBlTZhaVW2tjZpbnuhj6Kwy6efR0L8H3AKXGTMnIUUqIu+U0KZozC1FPLu2dJue4dvP9UcJfUWTpQw+/z+MIt/fNZ8pwIahAI3ARQWloXUx83D1qCfa/AxEgblSJXm5HUoR9Vpk9wncCc2zsiwgO0t918EIpHS/voW28wnR1OY0Lj7vhefNAYzTQu63aQ81+WdOKpJcXl5Xmuh23YocakCu3iu+BG/DO8CyCtSsk5672cJWSQZD19ubnzcO7EVnpwGjP1HbMlkkipQiUS9dtHSaohwiPRQw61JbIZMGcE4zIryNx57Wj7gFsCuSz2RBd/s8coQBcwo1/4bZvOSM0O6Rj0dcjoa+Cdod0IoNbSSormF70ZxcdfMF0paGIe+Z6fRPQWBIbIP0gS9wFHaZL/LQZUu1Dnv6jIVmEmlL3kX2wv9clS40nZalaVACBjJKLfp6mTahp5pSsrTeK28vewvIA2dDwIMf+OBItX1Gqb5Pu9zakX2rJH+dRYlFJIOYOMLE521T34r3XpphwiocAJdDT8fXM9WF34fZHSmvaG8d790ePmcTqG1qmft5lbGxGVrvRjGNOAgi0Pg6QwB5NRigjreVh075nTEsLa9g6pXK+ZcRDT6bI1kbHgjUe1Q9zIalXLaMtBnWxOsBGvfpnwTh2OheCU5cEmgDtTmZZCri/EzFMGKxdnLdtGHAlCp268Wv1khc2BR+MgIuF13gsC9H987xsKxkZCR1pbTeccxY+1nsDpgHbw08lG2yTG7uy945XATjYN0HhH2ps6l8MbWCQxvjbR8/xDLOfe3eNY5jqs3R/Cnx8MvnQ9g2PS5AKFZ44ShJHUmRqPI722jNS8TasawwlvMsYMajGaXYTOAs+OIcDMycZwRlZjpBWHotoPvyxXOks9RZ1hHFLpHYhlDbsVZ98TSCFv69qAvmgJ6lXgsf5fOZ4qZChJvv1FklxhLRSgcU4RHZBElGeNeKP+vS9HvjOyiA7SAezBCxw6XooTJoo4TZ4e+szJm5xPduBK5VcuJawm0JJqODFTt/+qoe4e1LVcgAqV1AhZiPNXuIr6QrgFIP2q6DDmaMX0Dg570oA7WxP2fAUBxMSGZq7DNUUznzzCB4ucnGwvYucO5cAx9grZTdO5FfOwEDeSYSrF61mgvb1ScRywH3oy7mtJccQUn5tdvEU9ArUMiEkoHOEVx3nYWXSDvCGIffO2qbLYQmV+rmT1CbGAoQNvb9YVf7mdrlFCZvAPtP9Iy5kduUESWoLCnFT+bJj4lIYOXpg1cHxl/F+/4PyUytyx/nQ254OpxfHgJrXpeyY/H7fRm+JtVGJQK1Yt3zNDfuwMOiR2ED3xeYqfrPPZUlG1PCbCIs/v1E17KQpuQpmJCIHWvrClMK3kefebW7tsAPNUjDlIWbnIV401FQvTDBuxUHuaKHmZz7+RixNaAu+81c5MeVzRX4cAbMHzEIqvdItf9MhPIIs3w9H+IAaiOPgo22FxuYemNrtL4w1K75Xx/0Mmgpm+k46CShQAyKDt6/hfgN+oKw2RCNuxUHuVQVsgIl5W9h1YLSq68Yx8YCPqUkjBl4ROUdkhOhX4l9ckBWA7XxILDglE2+bgkyq2HHpxEDCbqw3+J17BaOKCA4aOvo0KzH7746zTUsiTOZJOUh2O/zNKZ7JVCkXmyZ/y08d3SXXMhB9c2QYyq1RZKymG/R8JtFDHMDt8OVocRsR47yPEriydjxcKz7mcn8cFhvVph4V0OgfXDVu9Q2I+NfNN4iGGwBK3RIhMwLgCUEU8RX3IX8U1DeMT2Bl2sA+8y2hmoDmmTJaYnIau8B/4ix4LP0U1GrXL8GMxz6wawPZ84byx6ET1oiX1GelI9ftKRAAnzL0f355B5QtaEifbSGc+L05m/F+G1YqvPnWX+MDQAxgl6nlt7kuDtU3Tk4fPdBkzGacROZ2ODLq367aGTV7DcURi3MBM+qfk5xh4HbWus/OLaEPDedn+ExQWVo7dURXF/l053iFjRG0OcNNPVvxHBYBuwOnBuLVa+TuARmjelJ7xrejrvoGfQMQYsX7IXq8kW/XoyAbHyp78Tc8vu9F+DJ1vM+6/dgx0uUdZ2mZjIxd130GX+bmvnu7xxN+cslDsIbZ4asLsJyPn0GTYw2NOwxH2O+Jn84RdlsCuWzCW8fdf6qpGvmlF4/pmuEep0cf6/MJ3q60UNChmOs1g/NF3Q2qSGKUuYUbjZraNXa2kDQ4oOvx/IuhPEWcHXfbu9/oxnKkTPKZGf+BFBq7JKJNjwQUthgo4WIJN00crJ0lktBrkV/iq7TL7GwveDp/MOJb5FJ83j9fkuRh9SCGIun8xPbaob8xIUStT6CWK34nOzAzXp5PTp/lOyOoq0S1B/lw92M38rbazIYaLScaiHMK5qfreLT0XM9fNvPRmUKJpzKuL7AJ2h9Zo1l6NilyU5Kd2k5tuI+CZRHmC6hje6Vwhnn1mbzr5UHRC5K/HoLQZoOw0vZJRJK1DkpS3cdLSnDxWgeBGg53fMAq0Rk+avJUJAoevHZVD+H2Ay4kgbERzgsCHBhmi0qI/ykMP54ALFO0cpWsNuxUHuY9Dr+XFSvi4m/vCTqYrvN0J2E3G3mITzqFtmWkkboP9YABLgD0kltyX+KvBApX1CgDhCzoXHA+MASD5+85wVP3vwVVgahiXDiduDG+OSYERjW1XBBti47TQHHV4BIyrXpOhi6fuCjEWbiAFQUoSZxQFoMEisaHmet78mhyxZ5iXyp1+cLpAX2Fi1Owikq5IpKbbw5QLPxN/4iNADp7xR5qswLR0KgzH19U5AL/XU1oyUSXAmN+NIFU/rot9tdzPq2or+v5BMNGxnMV0av86/G+70uhvzoxVS4RKqp+FRqWKzYAze2RFEo2BTeeiZjJ1ZUSEpPsSqZuHHqiZDkW0g6XNupmDokXkxZPcQ+PKPiW99zb5QxsEZvrfPBMliMgg+BaXJ57u46XyeZ4B1npP5zaEBwFwF2QSy1c9v3KgN+V3/gSIYIz933O2V+L50l4HWpaZF7I+ZQPFDDvvxnAe8+NZoVT3EL8nWW5mvPEScj8ulgTAHhGsizvwMdfOPP7PA9ow0AHkxJQ/4LNy7jox/fO+mS4pS0agYoHHlfQIbIp8THjWAGIC6sKKMfGRK2CVhscerWMX/o0Tbh7Aw03olRIHHP9m1wzCjclCZV0xEBK2ukII5Y0je7uomVKxzZAeOJ8+MmulqO1m/G77eAxSOFyoaTDmH0An+X1Z1RJ4DNB+3YZcTvWCJHTi+ggSNoZl8DyBgnXlb59wjUDi7t4B375KloTD+bnHRWRk6yfLfbq+23q6M8pMgu4bv1cUBFUopgxXrK8hfAw2lfmDp0N4kH8GCvP5duA4pOxF8LxiXhLdYi+ktFwZrguydRx1SsQ1kFcS2no29JAIktDXwUPMWgnmNNmkPNaAoe6eT0fyOr34hSpQamyi/y4qiyktp1x0lQVozQ/qJttlKdh5unaBJwhubqoONFixXd4balUGtN8vLXshj4FcalohRHOaEa9zQbgZnwbqfDiWAU9FblRLUBs5Vo/Nzl46oChskj+Xs15p9rZs70ET9Zo8JY6YQEytBHVGU2bBtGeIbsrYghxIxlbvwU6KgaBHIVRXFItFIxXGUNYZ8VTHQR2+5B9EtiuBk13isE8vBzM6E2RClT+i/jgVWvKiG6C9J0xlAyREEWQxrTTmYjwxgRfjnHHvMEUhFEpABra+IoVf8PdEoNWjOb/7Ucbm2V9W/mmQi6bjUdmZbjVegwCjlrS0W4adgfd3v4FHQ3BrEZ1u2nnYzPl4Yp0D0517cnQvhey1CgKM38OO253ZeauOtKdai4zosBu/i04YGaGB/nZvzXtrVYq9q452mtmjdTipgdusAMePKn0X5iMXZtpYHIeHIDI98JKSAuOp1qoAgYCMZmAPuUHoQGwbUI9SEjI01GdefKhd5QssyGSSfl8wrR7J0yKuMMcI0h7HgTktiIhqAaVcm+9oYMKJomLoZytN0tfUxKcE7j3nllzadrbU0mexkDrb6/CEw2uXxdSExQWMGtZtRJVfVXMdtOg37YdplYrhny3fiwgBsrC8B/B0NbeWs8JnNJcycsSB9hl5kBqFx5Z26A1TmBTcLPDJWU/Oa1+aK48S0Z97mr52S0/+SqnbchBs8NaMNOODHSZG1J4mP919x2tcs/fwluaJb8zD1qc9z4qYMK5Tw3uv6fjsZYHeXKwfvl2RcSQjGhy4BQfUJ0MSo+ndvzn2BIakJ/R+uPPP0MDEkIsiALhI1Cfky7+d209iKAe9CdEb94og7OGq/h9/2LJvj528G0rDsimCYkqRiYSZYpnUJlYYSuu55ncrlRK+wSoHmPxlqxQYNq/IynQUbKyPPmCjJ6LaCeoExcV6af9JE94DLI7re2G9keooItLpA9fZnm2jea/DlWn0B/SCWJTgFa+9+1ZgMJe8sM0/9TwVdaWOCcTfW/n75DAqCrdgHu0qicwnHx5dVX4n//QWhKL6GKws9LLwMfveOiMx4NqWPajUJu1/KdkODQZBkUMdgmv0I1wAHVARVc9+Bs6C5oAwVtN6dbtjmKa/M6vGVSjZfLcDnfTSNNejpF6UCyvrqN0l2ow7vXF2B1Xcrm9ENFRbMq/App0eEooQc4GhRPUQtX4A9tr4J1ebloY4iNSF7nlJw10evpTZHc6mYwysnoLzhUCNY1xYNo6p9x2aImmK3TGEW6LTpAnFV0zY5O2MRaRMR2hDOZMYjkq/E6V4r/sBiQ3m+nRW1tplHwvMqtUot9hcjNpRFGTm3Tf9AHyenK+XDQg8OLz2Vthc+UYCOflqvUuB5hlLsAfLJ6lwNXa+Lehs7ElMxAHM5PXlZYsq+4ELTo9Xz94fES2m2aSowIH1Kuzi4lZDXC+02Kd2urwtrWu0IR0aRkRDMs481t4XsWaHWSLocha0pKFqScLpz4biusr7PLDX2waACS30j3TqOxa2cP++Z1bA/Z/oYuam7xRUHMmRRE5Y07kauSVZic9IcOFWlxQ3CVE838hRGPhePFtL2B9fRyNCJD/mxIXOJutXXQvAXsw/92LcTNShqAAIwHvKGUCst0fzlRzSJx/4yzk7VDvvwaSEiipxoLR0NL6aUwYMEkweq8F+/I8Q8L1/DmwZLP5mvJBdqnK4DEklg49JVjCqEQYkMxnCdcM9TMFGE1Zbj3fLvCUEhKwCzCyyDvHYxXRt+rfGzfkNgkOcLlmpJEd7eDOpQFQoFcM6QvF+DopsrtIM+stkjEqM34NWlRBkX2RyiaJ/fYyKDHrN+/ux0OWbJp/PSdf7yFFJV4vWYLJFHMMSbD829xICqK07dNA3UjPE4bogftg7+e7A1mz6UE+dGy988HtKs+IGMoXdKdl1KAUVOP79iDF9dobjynI4PibZGevKoyvxYgfsd1CkT0l5YDJKE45ZMoRwA4s7B00ZWMKibieYVWFEVIg0e0O54x4tL1k06UgapKzA8FReBX7typRMfauB11mXhgFyKZq5QoSEHwiJCZRZkH+qjiFWaOI/YPhoYW8ygGFniPODjz/19vj/Ur8YjXw3JHHcy7qkg3luU+bJT+Wa25mFo7Z5wbYoGTQRkZwnZS1UF5k6fGbHDDfRxX4WbYArBfF4mmWSO+a2qo56TM/ddBiX3AJ60FBwnXUBLCuT8mvUcY/VTgjZ5ZIFGl70sZvBgaNLaQjGHO5tc/9PDs0mDPVHvnsus6Ypdf15hTPHo7p4RqBdH36Ml7T3mCJWaAmGtgbW2FCNLkj5Dm+FyxaIKk2bRfVPpWIIxEmjhbeHynqsh6Ij79TLF7VwJ4jkhbBwLJsfD9FUFLgkyG50paqi+4Pn+H0NTkD/DMXioXjyGpWAPOLxbP7bq8l/J2MipkmCPFxpiWt45EpIXLhn/xsZLFUIjzEiCkwTBZPnsziUJhgNAAbfH9jSMajZPzZfNjfWcKh0ec32CRCaitIdfFY0tSht3X/l/eaI58GKyllqc+ZaqSx+ZKmKBWbHrjXWss827k7AfSHhOC7pAo+LLGsYvM97TfGtWZiAROK6Kh6qdzlM+OA8DXAmGqunSoO+KQuk7Yog3VX09cgJAeuaNko7+367iTFTkmJO6TZmDe7/tJ/35JlOs15htL8AoV1mdfqOQERXIr9IdG/QUJl6F0sYCyxxNfhMduObQ37m3ObZz13VslppIg0xVBxAGBxLjZUBZT1FgT/PlYT3MoE2tbgwCSNlatCypWcaarsNvxRpFBrllbzZ+vzZrtzATlgyEl5axr2AMIRcV1tMpuVhFeYJbv9l9FKamk8R1yxb/XzyUHAzcad5W+7AiwnDM8WoH411SpywWg32wSKU0tBnwcFVjBHioCn2C6bfazc+TXmnMWHj1/ZJmhzAuJMzp+fZwLJ4WYeGZhvlsB594vNhAtC7r1X7O1sGD1Xj8dExa9rDlVYYF+X/HFlOdOW8XcOskAarv7+VYXmcGzoBa0H3avbem3DgCZT0ROG5fULIiEVyyZtFlF3C5RSC/SjcGfgjYblBlggBUqL8O7Mi/JTEf/kXf1QnfBk4DqDgqgqdsKTE3AOKvlqZoraMv4PMuz9r94PIl5cPEBjRm2H6qyG9ivHFq4/B3dEYcJrNiJZK/eTy3c4+0zwYPLSi4ShpzY8ZhB0e8lyVZNjGiC4XU9Gj557ToQccQTgXc0THo6JwandtsdZsJL87q3WlwjB30segAZT0UedPORN1fMBN2LMp2ViOqNNuxUHuh/Hddi6XSuq58lFDlO2V6hfaN542/oWmp+QDSw7kUc9/bPcaFclo8Nm0WzTACo47WfeiUWT60CnH/UN3BThSMFq1TzdkqZQUdt9C5XZhG2RZ6gOOPI6sr5yvfxJVQnBAhY/SCdBSr8BTlIQOsWea0+k3l+5iB6tgzcbZvhkAhbaCGo4Ae7gDFNEfZfqi8jHMtZoFOAuc6dxnvJHD1GUf50i6tPGWaAok9AD8LNC0/IBU2sB38+XhsTlAIsQRBwDZg+UtRtuwAPcPQFUQu5ZDfp4/1BTgmO55e4ohPsyjpD2LC6tDIF1t1kqo1OVmYBMgJa6yKKXglstJQDlMyHua9YqfOVjbm/1fEYWdJ4e3dbluXDVlP3kd7VRjsOR8hbFBOzQRwbU9vvzIXWBrayRFr5RR42onK3Nninj92jKj05X+jCBXAb/gIUyVdY1+TLv4Okehq8BjDtQhWinmNKNKGRiAY3mV9vvqfcPutWVwj/6LCFEuAfGU2/eH1AaII3Al93WX1wtH112SKFRVeD03XL2CjymdP1mDwP5Xsi3471xEtYYa6pcGl15xOmB4ILMC8Ptj8yl/iA49BXms+YCNwFGEgtqPBNhmNCthMG/eQyqmeTBRkpElr1ExpSrHcZ648qOQFyfCEjYLrEiDgxiEPOpWUVt5aohtOU4KNpU4L+o6WMIAftvpSrV/DiUiorXLj41aSsRss+FXtSfR84pNJpXqgwVXH8rUUYxsSnyfJ/2T2mRaEDHlN5W4gkYA2kAFKpuXcQOplPNGul6E5XC5K8g3sD4X5mu88Jbk2K/edV2cWbz/QUbPER08dw0mPx+dWd05/3OnZzKiCY0VoN3FyfE6cgdVuiuAz1udYrPtwcYGB0QblZJhT3GRtBpDDFiYPDwArIZRlwtHPHh9KC87ql6TmGkcQINarfGKZUrzJQxdv+/w0PWOccjKmtuPFhgyHOx51oJtk1zDkvJfk5k1bMk5WQv9J8+XtbPjOwoPVxYwkURdpsb41Leu6LWD2Gyfg/EAktlj3BYG0tQN2km4Txu311vnMNv/Z1Gb3Gty0qSFNoGkOGRPwjDsxvFfE9+CASSsifISXui8IqxIhdgo1tYmawR3BDuuJ7ixb4VzKCMC3Cyh2zFGQJiAmtDKaLvX4gcjBSiOZ08CebqwfN9do37pvFyVKdOH118nED/Vsl8TlF2fDrhB8jLssjzrDm/D0161toXu0oqC2NCqxpxyE56mKb+4iTzcb7TcBkJyg1LElyAIw+WWP3XBH799WQ7xPFv7BEHoApxxtbNVVrurwZ+U/vLttglSyZzHO317mayYPI44NYvirvYwa0t3R93pklC2S+K58YQeKKYRNFF+FiYx2hFwUVuX0rp7jyWpW4oUGo4oDyWRYwNgYM0atzcgwdIPYihn7tyxsiWNDQAyclqF6U0FSqGuyQ0oN5NjV7s7RwNmpMeqpMnNQiiLlI/KzaWbAlRHneUGLpOR2eHufs+b8jXqS3p4zPAbU//rZwwpRLyDTcNBLbmlY3CdJjMElJkSNETa4FTpmollnIkqdW1/v6LgfKw3wtZdZOEkQ1ZpeilMV+2DzwfLM77uFhi3dJOCRtQ5afTu5uBKbBooMjZTGUG2gWVhEvKY4J2daQvm4LtmvvNdtWJCq6/3NwrxK+BUdBPFvSSKOdlaW6y2fYM+fci1wxVNGqCY1rBOqvU33dTJ+e/LtjEatEaB1XWyAhYY4CMREcwKvp5B8/UYc7V8F66NkmEekD/2AFhAWWT8GKugC9Yl4B38rtT+69mX6oS5/WCOnUmZZnYhRUrhH08fuvhweEYuaTfJHF5mur3qsMDepbcASQpzLgJsa+bBymFR5cASh7cyMalIq1uRMtxfhOGbfRJ9EdSX+IRXzjwMKaEnlFc/MgPrhPkvdThh7Fjq/79wDdOEN0r9co8mkhrcRU7JydsD7Qc4wnYqQhWNSpJYpivdK/f+wxfbZlH/SBJ6+/cjk+VSDCjXBG722oRMqK0AYc4KgOUPtzg+xNrHF6TnzO78L3mc0XsunXtdmwmY7BIgQeXSUzil982477obf4hGpJ2nTI3W7zJPVsQO40sgKL/SSxbKaTTARqq8JCEKRMgCK75cUV5WaPYkf9UoE4XIn/hkOqrdRH13CQkTYEc+kDwIX7ZxFUKcIDmPJmh30zxsdObLWo00FGYZ2DuFh13kYlAnyPhsYyfxZhVdnQyr1376yexJgC9akjAHlupVgKeQ5xh2rTcF9J/3VFJxbxUJZoKMkbmdn2qCTti7o7ngulLQq7oQdWcFKNNLuv14S2EwAHwFJVzPxB8DAaBI9Ky7sd57JoAEjOtXMVRunYMmccvzriNo0FmDkDeiOO+EgiK5PefLSucEmZ6bMGGvP0CVbsgg3LawFAvVO2hdK2h1ajbtWojl8rOpB3Sk9Hj/3O6vAYw9tH62eXYgAqsbdMPs+7vwPlb5CSoVUuLSR16d8ADkVZ7wVPdr5fkPCVLamAQP+G3R021he24AKZprZ8JeCQQF0FzASukDXlSnWp83gNaVElSrUNGiRI8pPo8lgkZt+3p0K6yqulz35d28EPdZrz3zalsoGfyv5dA3v9muGg+IbZxKciGPnVz5/KCUWSuzEDH9fO+CacBUFg3cJ4TGeILU0zQYP0w0qHBUPmXoXgGAVbl+ut3++5LgBO/2uBaIQHgJjyJAhLjuVREqe6joC9Sz70vB5EnPxl05ucQ34ET07LbxT0HxN6OxW6C6C1AWZwsz21QEx14ho2fhXZnSXAd0ipgwq9Iw3SblNAV82+NiW88QZu5kuQDFXcbR9QGUj82EmDVgl/CQRS+ZzJ4H/qMDxw3u5tu6bU3RuxiQCFn6qxzjXes0yd8AMq97VdCLYc34csxQTD7STlwi/R5UhNshqW7TowAGODmMVdvXkQHI+OE+anoFLm4JlRiCxnkFqw6ofz/ECoQnAdVCGblp/7oqVjr3GrbmXSyZYZldBamtO4f0Q9GxxWKp5dI6EUmjLggCSUHpj7QLzXd/gR7OrBRNrbJgOIRvy7uBHN0Qx31UOvjAMX0/nwe4cTo34LWs2AGM4//gt1aDGjU7tZZdiUR/XiYgTgMdLUvlavuxRhRi5V1f5pSVnhtTUqdhULSjz9lhgE7HPJLHt14yIq1hl5VAfPD5ZmYcNtFrooSgdaiLtOd6yVSbhr99nHavfM2IzoQzjMY0X2cAnAlErK9jQZysczwoEaPBmX4aGiLKK0S3L06whyzqgCexdekRJOIK6ZAeQp49cbyWGa5+NxQ0Exb4RPHUhMCLt9BOPbThNRgRaZKNJfQG6Su65TAyEuRFhyg7pGOtqfbgLqpdqLal4Q66HIVP+gEjClxmpPcW/5gxdR0bPlfEuctHeQAmi1zohMcha1Ae/zDo4vYITgq8nSQy21JOcspJQQk//73m1a7FC/EckXz7xblScznVXj0CDg+8h9WHiqOzJL5bXRQEtVhNte59sSXdAZbe8T0Won12/wJlqT8YbrZHApE3sMIS8+zLpwM2Ro/gIGEVWy/m/DRUsxT1M6JAtvgU+Wp2Kz9X4WdtG9EGSKqfAG+oBRCQQWrZ6xKNRaaW+t/HbV4cwSyqpziAyhtZ7IKvjkCmzwVAnTTI8guEnFydz+G/YC8dyQbV+4b6c6xpmzl9EChsgmH1PNjtk0uu4n+OCpbJVSUFtiC/U4FQ43VTf6bsEs2Mnh8pizZqKvIDCpR/JRm65z4xKZ4388kydmvP8wwsKbzk76VQmrGiM5u/AbnxzCe3J6SgBNJ/QPW0ls4oPULRi7r5fgQALL82I++hA8SF5OY7yOsr0IYa63jPKWrEdAdwDk+1mLqC3NdUeHBmubmLVtQewRGuRhIzRlnW8JVSL/o3OfFoEFUMa1pZHDsUXgynnfEH0R1ZGVeHtRp7Ai1qSNspJse5+6vWghFJElEykRg3tSO50Bb/LOq/6Mc0G9OfCQw1Lt6IyOZWvsjL8TnD5Akmxwd1V84/VKCuyQ5AclGsNiD2TibL7tKRPDAzBrobVhf+M7RiKTsm3d30VcwYOlPYkSB0YJP9mxI6wsF+SKlXle5g13T4EuXiJL0Jpqqh29oj0VerfM8CsCwiqLkV0Jd8iYApcSqYcaM94zyUlShbjxrnbmh48FSJMpPMtlFO1UUNrSiEjxUmQJ3w7dHrMu7N7dWgKH9jnQHIa5W885HWkZR+M0W/aoUFJF+muXau9ZDfq2FceiETw3QGHJvhKeeZlDrnVjkR43azkOFPvb9JgQBm1Ziiu35blvRMFuUojdlZ8RrfnzqY/wNqdU3vfxzNHxATLxpzoWlKO+IK3Soh/wueq4/zJeaGkG86NlZ6lr/l488PmJtunuw5VuMYHyh5evp2QSQgHzJhFSdRJt7fghKyPwzTvRlMbX1WrIlI8023ULAS+DrllzCEQ4932Rv2pLG3DIWbD5dwNJNMSTUDSOspDgL1f3/xe0lGippZg5eXpdnekP49vEv95nvGKDD+CJ7VqB4ewEptE6sRYhFibHITktwM/VnOUyr70xFoECRAe6Xa5ySRKLJINcrRFGU3UnpsG01Rj0Qva2O9TpfL913hWD+e5EsnASukD3TNH2NnqWKLLDcOq/XNqRvi9RMTbl2BqP9iegTf2zZJPqkIwIbz6Bw1O169F7LGbuqYmmPuckzYSN6s8Y0WstxcEsrxjojQoOhhfXZ2W6Nt+/1dvMJmHARJG3eG+0PHrOhasqJld/wsyGXZy3A1d5Sd9eJoCk+JAcOkGXvtaHigoAOcqhPZ/pvJR+DI4M5QBUxRJI1BlIGNrCXONdKADta9T+JzQhe+ls7r0g5oQbDwMoHlNzVXqgsLNiGfF+DxlCwmBMvK5CjL+bG7FKakNOpRVZ4qLyyo0gUHGoch/OGWHKuSiFMMk6vkqgq8NrrBdFR7k7fE9I1Z4PxAebpxJsJBwLD5G5O1atWEkoEk9H5OqTZdaZZLYbVSCNRJ0YY9bLrKpzHinx2nOsgcwN2CsD3xR9zyfoXCNwB6X/djWW8gPY83MdV8rzvmRMITvnvjhADGdWtl4I7ivP2+cJ1/O2b6HlFOPbPMG2+kDzU3KOiMcktHQtBh/amTt0JyvjVHv8zXIxQm6KCeDh9sZcNwry9qkEIgO3ZFtsXQaB9J/35BKjficerN4LDm6lLdDxo3VpzMU43EkaBUEBgfiNXfRmz5Q3XZoXES/NG0Gb+cnd1PSvynqaoOkXl7lw7zXVFD7qlsA0K41zgI96Zgd5V7heswLAx+5FES3sMC7lnopOufBnQ9dzgQo3gzXsiXNhoCSKYJbQl2fTkSP1+RpArpvV2XdM4rc/91efFY0x58rMfsQ5Cq1uoAPPHnDpQ67QaOFWQMSQEfSOa5lzltGXtJy2rOA3lVARDxoDHT+dl9kWWYtAGAmYQzWW7zWH8vEJqIKcfZzGodSDuDyFUsD8Uj4wS3le0cN5Boa7Htb/+qsbdZEHIvxKAoD7V1+j96YcEKx0nXgaYhA/NnzwBWV6f4A587Ptn+QqCEReQIPZMadzvxYNTQxg+R4vu8XGL71BPLbMbazVjX+lUq3ZE33x+QClMXiwCS7XDvYet73aMwPFgY1GqBn+JqgdeYb7vKxb/uCxDgBdlRCyRRjAnj1EPGm+FaQX94oHgiXLKdDBrXrnl/HKreiOpszNzN8zhj5ApQT0I+ZMyWHhq7KFsnxQcgCHpvJcaUrCJZ3dYZm3M9m/ItXJkbhTjyTp1XsNm4ZTdXwyz2eeID9ECehSksFEVLFgDu9uhJbB9uMLEdu+RCUqnreCNsaRqnLrZZpOBUQ/NCu/mSBol2Kg9zz8v/mDlTB3cpHhGdL5nsPfJVuqkGKubPrqZ9+YbV4J9z0OauFPufgUeQFecMniGK0Pz22NbocpHEYnebObnud2l+xvtKO7Mspbj1WrRrVeg2jJBL4L/QVYzCLPCo196qH9etiHHBsRAAm+UH4NYiW1NM0GD9MNK4hW8ZPSMMrCYI0X1+g0KdRXGmpSS2Ed1HJq1KhaOWCAH+yIxMU/ZbvJ0gezGdcwpUt1jGQ8EoXwnJdcFcEGOr6OiXnf3Fm7q4sGSlD2IdIrt7JXwJSFPgZjWJpXvbyqsP0FF23oX5RGSG+oJtvUGmhgyvjHYtX6+IARFSaEmNGvbsDXKfQu/Nj9IEG181Mti6VWKqZboIxCgDlsWa3nroyVNeLn3Qg8MDRGLs+wlR8emqca1NfpK1alU8N6ggDjkLhbHGZt0fBHOT3IRpRwX1FUakCK8+2QLTNhq5VVzTmhq2ULbWGAdWljLBAfWAXQlpo57eX0tCd5aOJ9+mVYNFcOmlDY9yZM5M1arSypa+E1gS42adsLqXFtfiyGmRmoGdEJ0w9RUjgsf49Ecz6oDzzcw8C9AWnXGf1uwJuyEtMz+mN/s7781XVgOLK/NH/5VO5t9txc0EZY/LzG/CDOFvioTqMTVyigM86yiH5oHXf61xPgGCtILU6dezcssy4yYV0MzmUjYC7ahUPzbRcDDmdXKwz4kDoe6Ib13v35x213cJrYG99P2gO7BbYq8S0F8vm9dcCMyJHPeyFev3vwV8hVoDxy5AoZAIyZXP0ZltfHZdCLWWL9rsfLDlNEgkciijtjIhWH1l3WtQpV4oski8fBtdpr2+TR56nrNxvq2yaiTYtkb3z6EXrsu1m7LVEZzZHRW4A6KM8yb5X8W6jogEXCwwi5yU6woKoz7cQH4tYEyR3VNH8zyZp7/0l0RDNGX5tOb2x6tjhfEgBno+L7xAGINW1BPYdeQXDDcy7rkdevOG6xoZi8I7oyX1CepaIpx5Y1ArvAKQnoNrIoAEOd8f9XvukRQwDHiftexu5a70OXvX5P2k2s/y5cmZgvPXDt2cbDTHCcup4MJzzIZcEHWnfHxhZ9TV2nk+pEtR5m9UOhQ5i0f9NYN5giZ95u5stwX/w4PDntNprhnovJq5TxPgurBKyjJXns1w/4LaTfnTMy9BrP/9A/0gkkj56pyY086zhNgP1QOXUFguTaM1psNJykBroKYgKmQBkK6paJxfGIeT9VVie3N9x1y8IEUhu+JBS3LF2fJxd4OL+7AhoxmaHVSVLeYT105VEz1zZAQDnb6qYn+L+DnRg8rOErO0+25B9i5GsmaOcdJdPXCe/e94ylYFe+cKLQBOqFNk8eUVgHFjfUdoXAjXvt+qC9+YM8W9VO0U9XtJdDxEzZ8BYFzqJUs/wixjAbS8QYVpTUfmzxK2iQAEGQQqnWis2slALdwlPe0eR+17jGhTV9adN06TBgLRzjTppd5Ww8Q1x20os+Grl45RCxA9oKwSkKmtIifVcr6cStGrTkFQ1z8yvZ1mxNjPDcRM0KOZEikWN/LrHSdM6hsviN/c3sbaP5TXwdUrz8L7+kONiAzADgX+5YJ1oStGxY9QYDNamd0v8W2Yogh97ulvFxF1B1/1wG9kpU9qvd8y2XSaqaetdc/c2jEp6rPbXOveboxyJHvfZiuGnrucbP1CrW+XbZj2Ew5dyhnrkAofxVFi36LgKQNFPVAWnwo88cNuHu4JILZMGlvT7oRf8X5lLxl62Iw8RQ0cTECM2070SPW4SooXjk7/oozMZ9cqPvpk4D802Tn46s02FM4lW/ehPGzRfjc99kcwHxfrEC9zWKxv7WPm31g6bb6SIoBY0EcWbhdLgcq25NqLxVAZpqW4wXfzZYAfidoK2M4bS03rkDJYkmkgqvIHUmu+1eBVBTF427K7oA/tUfmNH6jrssotzdB9iuzCLwrCYwXGMCSLTUtvrqbgqIOHUt40hLEMMS3wNW1xRu16uWWqEWntS0ItPsWVM4CxcXMNijioVSAcUDXQaCS/pieZia2DXTsEdLaf04ZgfCtbtsCsXrKGt46ih85sYb9MEwrorC4nVcEs/5I5gMOvm+2mJ+PTNgkCLd0H0BZy8mua+Ls3baGR8K0bq71512vqYfl3Pq5W82A2FpSjkvV5izSD1aWNmQ3K7a+JjK6Zwl0KsJABXDa4XLtMbpPlfsYCyfJMu3KI8FWaQMf/9bvDae8eAgUS5TxjtxMtyciqbuBhm+qxOtFmNwZd0xczJ//O+suaJTVzTf5bMj6nJAV0dJ5U24jsF+RnOgsfKI9d7GCgEVrV4DGHahD2DkCrHDBAIB/DfbfABYVrgTfEoYyB7YdjTBXWYW5M9D59u0LBFnkI2Rib/B4zHgu/rCGkdnxH2brzxEYkXN30lquk2JNWD5CjHBmK2gqeMOsrgFdN3NIa+2WlHXbdL+jg4t0wZLgB5EOTg2qE2QKnE06itY8+R3JKtu4bU0BEgqC4/kL12oP0B/3a/IvYFfFWgjRt1I5q9eImkpQk5C01cDCaPR1ShOyeBkLVXQ4PUPiejNcdyU13vR0djicLbehKU0rQkuibLseF99OL7by+URY+LVDdq1UftyrhpDaAErkf4+QVsffqGhQaK22ZO1TOtWcMfda8J2dBBdywPCE/rqPMubnjnKAR8H+Np756x1OufiPgLi3d8ieita5VRGnALOkV1kdVD2gFjD8q9EgEFfu+ZLHdXrUwnihm25p04eDaatj/IazeMwpDmKQxsgygCybXMz/rvgDLVH6mS5RCCO0c+QuYDgM5RuqpHBlAy/psHotvGQFqPEmcfdV7MA3miJDf5WReV8yUyK1uov/6cnWv5CGQKaYTvwmfKPW0JWzJCNroFNhpAMqjFVx8i+yLzPHhJDRRTHFV6667RisnBptuz6SLocA40BHiKH/kgVrFdxRhuhFgwIfMBV8D65Ua2Hqeg2Mv9AmJJYEqnXhyH8jYZny6NeaU+OSfnuTsl8XcuX07VHbpX5xgegRuQ+IixalMS3E/MxIY9qzj+9Qs6RiVF23mwy2xvLCL8eul9kMtiXXj/O9cgArb7uLYESycqlQZdyWSUHtqTfzCxJ6rzrnEA64mFcs7qmBRjuGzbjYsPpeWWuZY+0nwgHcHcztvxSFrmEOoHbybc8RB8DCFOYDTlLLMJ+0jBVV9wUW5KWIDv7LbptuHIaUOVT8ggZgNFZ1K7xfjITu+SfIZuO2oR0FJw45L4mVCEt9Q1UXJY4llUq246/ZI+7SCiyMhNQIUAQHvgHa0Uvll91oQQOUVZe1CWjRxtXPcGclXzUCUCyJTgXRlQ9qADyrNLg24wAqehiMp3Igv9gnhaGJDfAii0XD0QJhKWRKjygvZoQqK/5sHXq59Y3IkGwjZbNXgWywhVO2jnClyqXRk+DCN0TvMoqwpWDg/1nOyS0FBTAMf7L4gY88RkWJGmMJo5PkMiJ645rghPsrOrxGuMwD+EWEc2AUbOSQm+UJLbpesKvLvaMd3C8MWMQgOa4hVkrUXBEKIh2eD/FSFCDnz4MNbqCXSgMx3fJibFNrU9hcKSIaWM2rNnVZROX1AcMhRcDeeYEqQYWZCMABs9Y12M5kQxU7YPVvmMRc2Wp8BIQ9av9MM8PR6cwqusB1TJ4y90CsAU6BuF8zlWsp9xfJCb4LHQ22ddOLf9z5vP0ILBfGXw5QjO5+E+pxz8/hzrPVp4ydgpAbF+GAzDeq/oCJZYgEecjF54JsMw+dArDuJ7Ykur3lkpSterkZ+AJgwE2jYtSHs3AelnaE9d/lKFiUUkg5g4wtB78qcwiGqfx+yOnnBZ2j1KkuZTpXehyT4lavvLAyveiRRRMz9qlKzOvFoAMnYX1/fIwgqIxmNjyWiJJJIaVcIABSoy4HiKs3Lu/NWjYgU9sFnEGlgTlxwCMA7hjRIspg5+7vuJM1aPMGYSFlqEd2JkxKVghnz4cQ6CE7zrnJtWp/iLcSd263RGxCrTfJE9CXodTesheOZOCKLtdQqtpNMPzJZ6CPIfu5HBA+Hzs6eFMJ8mTj+SfWuv50XCAqQunojs78hPnzUFwz0990QYP0IZQXUzpJANqC5uAA/+0PH3tmnR9M1x45sRA0TMaS8iJcWRXPD6toSccujBWCDeujjwu46jxmco7gTvYjACVaIeuiWTFe/OxvH9q4kWIsAbz1IulSvmOsIooSq/b1UO8fgbUaFZm/lo8eQtsWRtxx9oav2DeScBknAjmp3FHFhI+quQQk5mFMc3hNQj4HPdw9u4jH0WULyOx7SBtBQKxOMAA+apns5CFCxP1KDR97DtGHQWZC97t4/VdB3JyDrPpI1BqZbbn0+TiQwG31+3db32HHHncwTekKxaDlBL+pDwi7j6ubqZJmDm3bVvMRZ7ZeEPDgD4YETlH5gcQPtpLum5NMWXvv6pS8RVAU3Nq7mEWH17rlwIFgk6zJBqpR8zXg2khquWLfhSu12tMgTez6/XQji9k1kf8Dl7I5wtfAR3rYMeP9LEFpylG9IulW20NZ+0LNiuQr8uXMg8fW1d7IIQCHxUPXhppio8Iif2wCWxY8cRiCljjE1Q4htzr1IEtZkWy8ENKWc6gL893EuVHYH3JWya5XKZVMe3oW9kJwyBAyJ35tIiYZwasazJ1P5zYP0tQcpEYQha9fHDK4pO8bpCcJ9k/F22f6uif3Lf7loNVSzRSAtbx2chV5lf3h3/2voBScCh8RuFMXLmbHn7w1OtzDLXMAimD94x8k0XELkT4AH3pVunUi2yCGpXf7AoUTeRJ4vd0PevpqS6mrIqYOPtmZlRlWO3xMnOwHOm1d5JqeWyfRccBMCSnE+cFWSgRSu3cBWgXhBi4kpATeieAdLG2Y5Pd3X31hAEqgwDSosjs0uu0fn0ywqCxa/3ALiEHUq8xeQwec+ETsM1q+EYQNuzZCxxgsUJJHh4iAOe1+cc31wV1APZ5bh3xZ+xsW00KzeL7RrsprG3wzaDm8/QmciBXmo+ZoKfHIxvLtBKZgvG9CxXKMQCfOep1JcAUypdug54KPrxjLLaK4mGgYLhle9EWCOc23jGFVBvXkO2QbGRIAMCt2P24whEESaGbooeR3+ic+cHv6J6l0rIOTmkOAAAAAAAAAAAAD9/+Q8HmKDRf8QfBG9X9jgn+2q7l3RbtzZeYXxbpKT4ll1bm0B353ZwscEJy8wzMCRMEgQ8yjAx+Wk4EWO62SRF/4FuKvA6cNYfqt+Yiq4u13DnVEeHv982Zu5B1ZntbwzjxJl9ts8E1xk3pgLyssd/TznUD//hT3xsK7FeUPk8NecNZW6LRFis0YtZ/K5E+5lpc49lio+PBCrhmSdQ04CWq55m1rVOUV2VAMW8YZP7Ic605noMhy6lwn7LYaS/D3T6R6+TtKHzTScpra7XK8hyY04KrhJFH77QDugb/W4hpH/KNf5B1/217y1jvR9v75KSHReL+3nVfglub05GjBgr/j/gBWnnquXpUS1cqilS8fhHphDanQ9azLMVtLSOFTnrJlzkpGyf2rs809kPfFicCaLfQJgYlfoS9PMRZjmHWifs2jqDEUYCAwtZDMl29cFpc9nT1JDtnkZj8Z+4QpSP4JbhGJ4IzOSBuePCLt+ZbailvmM0EX16i8Yxnf3JZzmoS//Y1JSxEdzt/gP6baDzz6V2SpeXKRbufQ2AkeOElo39vEz08v2I+KkOX9iESNpL6MOmJBX+Gs3aGFjacHN6unBb/8FDMhQ713BVfl1Iup1RE3q4UMBhTYXVFnPSf93ihD02NvrGFTLDtv6MBXtsRwIkAn0H2CPKJkYGiO59qo1I9SrgTR4WPuOI4RXSXpnU4QZt0iDpdWBdLAlhgdxaTZHIWJZXz4JB0nPE2tGi7a5Ru3SW771Kh2YMYpXQwC7+lmGdGb/RjNSIqO9bgnfhvmzj2MufGpqSBEcdSwt3DcPULjkmu/6/jSEDuDFBf7j7hpq/kHdQop1Ou4xgwTAa4QGsl099F/vsBWUbiF5YXuOjrOPoANtvmi87B8P5BHViIZrVMNNxsRCaZPgjkb8Q8g6n5Y4+2p/EdcmZtycAiVFn7g4cqCU62b/6Wlb3jrWG4FFfdyR8CFitgtzUfMok8gVZd41KXEeuOVle1Xa1datxuSsm7yunLDuWuCXwPVubyaF4BZMafjRFvBYVKftkinqLUwpPBXb7Z9Ns+MLT7Gret9lU50drpW5tDHf7axdEIk4TbA0pWAa1nvHt5pfTlXewMyy1SB40xzpOC3F4sb8yBnNvl9VdhxZmzcGoZs9yJO557FNDxvNNHYvo2DRSOlfwt9Hw6jmPZqsbR7TbTc4tcv2qIKTVvaG6DElq+ny9dm8xjERI51I7e0CQZ4epD5VxT7zgFXgng88t60uD9iuiacF99T1gf2JWjbyRyGDXc9opRsL8iIxJP5iQwUf+r4HlLR/CiA9h7UFKelulFSysT0OtZrqZv9SIvrPtMsU+N1iwxzSXcMNm0pCzh6NO//fI4fEudg14sT3JK58VF09/Ye1Xk71ipELuKAQUU0TnGc4yM/OrFe5XeCvDeET74s2HAxqaGfI83OIhawjaeUfBh/Yi8pjRKHL9VqF4Jw2GrNCZDikZSqqacxrOnjSZ0AVxXEfbPhP3d3QrWZ7X2ZAy8f3dNqcirQZ8zJYtLxnE5HERKNhPc4UliIK6ba32sscJFYuDR38goWN4y30nMT+3yO+ieh7Nw0EwjH2C+CZOMdmS4129VUVA7LXGPL9mxyuoW4mNU7NH+9SWrg1AVEAEEfqEwUvrfxxzgdSQdwrMBaALT8foqRWheUt45tezykArPGxd4GDHXxXu27BbMaAIy1l0tyRq2SPyIdReocf9djWWmTKxWHBuvtqbleiZ6k3hXLPJ/1NKbL1Og6PBR3F1uj38HuLf4yjiVJvNTuNB7lr21WcF4GKrhV8op4vN2Ohlf/a0MHYrU0NpJrBpDaTUslIV/BguF8ImkN5RRb1xznETFBtu4uGFhj8Ff0vB57Zm23vGqU3+rGbhF82+Aq1wAx7brzHBR//y6Cl3K/JMQttVnInwsSt6g/3cuMla0Ly7jpcTcNm6NId2Lfq+tssVsHhGRMY+ntKTJ/FeHlvAdevJRAPcFgtVD0rlL+6nhwA+7vGsSlhg/+dYtGzn9Zb7dbjIhnbfEO1v/rJkLfVX/AqX29S+BUTqpTwVSraaHBAjvahUZ8iZ9v6rim8OvtdzLTFaw4aYDvoTOIOlFumZy5OXs2tPauyZFoVxacYOcZcAJOAL1iyfXRU5o+1sV6JRdQNwzrzQU7Opb8okb8vHZkYF1/Z05IKi/KAxOOK1tM+HEeKQ/8FSDD7rf80R9tVuNG7gOkFVt0JHC2IIyln/saBlfn+NN4i5O42kCXy2ioTVqsxfeJKWMdJjarg3V5L8/eY98cnbkqzc6uyPqiquwbnUlbJRYDa2ocf3q+iCJDZlPlq3hzuf7X98wHKFOpWFlZStuxfdLBIlq51++5zHFp4gF4xl1SN8KQTPPvJHkSg9JcNlC8wwHI4XMcS/DR+k4zJJ0Cj5uZXIXVM9h+a0SKLeC2JAsNC7NBApeG3ZCH1RTBIAv1+wNc6B7a/c/ClPYoGOFZwgoy74hkISDzEOutPsy30hb3tRw+fH6S4TLHGPgvlhHsJdnA7cflX7ctRkSSqd6qUa/Uz1jFBpJW35m6uwvivchs9OVv2hEzDIuDtYkQhsvmqJcNslENAyMpieYk7d3bTi/29mw/cDhrF7BmQtVTwsH1DOOoc7Hy467PW3UQDnvChUFxyVW1u7KiYGW9Ddwb8/Ux0oz0Q47H9xanYeI8R+G5BUsNES4ifBxDn3Q7UCXSoiRc4Ig9s8zOVqpN8sypgU1+9MEtXH/ZFauxO3abmoOsH96dZuHxA9Z31VmKcv5ScRXgikj0VcXQsUQN/p/Jt1+ROqaEeblaCQwm+NAR3BoBZgBizmIHvuX8CDwDVtvlQd39cnuySNkWT2X08EWopEZ7Hl3rjbY3uKTTPDm6juYl7lZjkkZ1hJkj49qJ7lFFFF4hanKvJNjy8NSsTc588gh/uG54VvM9s9MuApbIe3yHx/qyimSWy+YMEApzNYFZFsll4PHIIfBcGQ+HWoOPJLoTFMHDRC7N/Ri1VLYTrhjX4FhAPRM6aBH8SXnnrvqHnChi1bo8KcWyx9zLbAza46+LwwChcifmKV3QDiQRKPJ+0FpfrVQ6IuZbUYBoM81g5j0rOfLrRNZPYOfgaqD16zGCmX7Mdl85KsKJNuatHVU/B7U5rcGNY5gmeAGUvQTm9ArMH6X5Ce82vIsBeaDCshyEsWi8oZi0nGoVoPqk6WXu/OjwFdPq/DoY3PRwa1NfoYZsUBDx/+pXrJNqD5cttMSra6/uZ6FAsQvi2fgSqlFsRLdRtQrVpFuhkfMwCnjhiIe7mER7VygJh2hHt83eh3dv271GMUmfeM1DI7iwg50+OMR81g7B6U9os9JVTAXoLQddUEBc49+/vNlE+0w6EEozNUsYdSGoAxrQqmSAUXapYmBlHVwqBilYxpym1roUXUEi9K11z+qUZoWs3Ga4KOAQzjI/15+3Fx7pxISo95MDniZgfY11q3vq9Zg74B5405SXBUs25rDcAYJbSzTYp+oAip7xEPVw5PctCazgN22JV0jH36LcPU8E2bpP9lRFruVYL6K4kylvDmAO064/S7WXvPR7dhjDmxQD6cp7cJMh1Zk84NUlVXfVN898ZjE1NyUZ8UT+VozLqQOqZN9p/r9uC5nSx1nLkHzQjCTWn+0V6WHaVAWwyFeYzvgZER7R3bcnI9AHZrohSTsPoH4bZF8SYHb551qDndKTkI9jRsSzE9CqrHz63e5ov/hbCVpRiP1vjNtdVABhuiUZ85cICxPZXh20ClrW3zgEYPIy4hAhl0Ktij5UnezsTsvnoqeTyKlJbotLSRVwiwSdp9tIeeGR60koh4ZgoNaMkp5TeNc9hUX0Q3LZPz7HxEMiHXMEHH3z+ZB6p+3KXeGwa2Ediu8locrqUtzyxD2Q7q7+WPMKKdLwIx1vRz4P3KyKPqM+qaRSRdlZyStWO1TD6AuxnmXz8MwXEJvE+EfGmeFQYrcgxPrXAHx4PN+ucFpk3kblSkqt4fYXPG83/hp4uWqQy2TGFf+A+dtUHMu8ZY4OrxoqmYB037OblbRowtz8UrZojhRPXdIvfdv2hNp+9ay2w6Cjcj1kMVsgtD+Y5uq3IiVbsi0y/LkjGUYhJK7nAFMD3ldxm+NM9ed7zftIwyBzLTXXg3lqaD/QNounQGbDWD+fwwbs4Em3Kw9LPJpQShf2hKY0cB8rdSI2W/q1BRlIJi+zNME1cbW7ORS87Sj09eqMPOLBr56VOTF0kfib/4RQxezgYUO2vvOUTGq5b1HwDj8pUzTXEdSQC2I0ZqPOQLcjb9AqPhZdfYdn3dOX2fj4Uh0yjRKujAlgstxerpHlmJpO3YLm7xnZcSqC5aaE1/r6rAhfWuqFbGdEa7rZoXVmv83pTiEOSOVGgLl11aQOc8H+RRBf44yDPxNrYCPXcB2ixzsrVtAZoK7bdnw5VYkWv1NEnTkWp5BcOcqilZioW/JYeJNxO/Ly4QRTepoYvY2vaTIdfr73Ru5Upv59I5jzZdCEcJw++iP2INLg/YR9GBES0Ra9R3kKber6hM8PyCuHolq/eYT2BRt79Mf0NtSBR1dV4Wdr7mmTv73WgvQurjR4zYxJiVjK4yrrrX9roNdqnMqrw+9acblR1ncdnP+rHRCZMlU9vxdrcK5A7qxDW2MIClQHcrYxoa6MFbC1NJv0U+6Unz/O6SVdrcm83YLdJf3v7WlE55qVOw+fPFClDAfQiZE5gWfMgLXJDFHU4tn7hOyhQ/0ZdZ/edynRLp/UUTcZnbPj6KQMIuIeGb5joPJlk1fIt22ff4uAszwo6S3vSDqMq9cmcE797fzc1ujINVDtoRmhzQ+HAiq1m6BMh+pAtvMRKaLKsytlhtK0wjd98slX7iE1MJvhNhumTOI6cVG1JSKeBntfYHhRHNRashdzao755ZXTQfdfPQLIg2sd3UrSE71EzC8bbTtDuYgCETx/nwLoC0wlUb9tBh1vGpb+WfBtMCEziY30HXvy/2lbK/Mhu8Nih3urhu08LL0O0g+kzoz4nFLPwyQZQF6fKmC6gF+DirBFgLVzGsIa+7fQ/G5kVv+SigtBmGoRplaNe0BILgB7Gk6+enN5xJ63N6rIZKciikjCv4WGFYjMeHQrKYb6BIfJG41NjTOQQZpo4yRawY1ygWnDibhdYwRsAFHnk4mJYjMrxnYhNYnkLa9MZbUJi4nv2IVDT++Dm6vhXAXvq8+oOtYBhUBKPisGkjlcwi2H5B3lleoZkVuZa2dz6cC6LpiwQMw+Xo4efNxcuQ/pIqE+c1aUiYi8dmmWn0WDbf21yCcRRKvAXW2HEYSqNoIXKZxCcNM3PwCuMCzXQ0fE+h/ENbLQhGfXBIUN/6PhmYpx62SsPc1Sdvczb32fMIZi35uSeICKEUeBOWCYQiGQRYYnR/NEHqxdbuGv0smVvN1kUtkmtyVoJQp8Kkseqf2Y8yHR0FYi3oVPGl4HU52dtQ02GJNHGJouveLKZTHfwpA3bXwzTI4G1C+hX4h5M3vPTtlhWcN9Lu/yPf/+HzpxgOGue/eb3VRjKfHpFOcjmMbfz8rsoEim6a0jtUR64SLdp8aS+V/YRnbPcwXmMDlCNQhIEPAmA48Z0wY6C9xm1olISQzMG6FmxDXCHuPMt0TqR6hyY0sPkDSroqtlO9wqP+B+oVLKZhdfbCKvN59ys44mfG6EMN8UId07HPh8cqdk1U3kdOFanIN8HR1/v9M2JZJ24M3A8qPudAlE+rO/ADxas7Mi9lXw3Sy1na8JXtmJUQwUu2SPPdkGdpPC188S0UDppdV+CM7uDXDgGGhy7ZbIl7fPoq4Uq0vrELbvMQfBWsPMBElM3mKduxu4wAcUZbYZ27oHda1Cf6GtIi/5qITFYoEU0kc4/nDGtSIT3Fx50s9JxcUt1/glHHgTrgbI8lZYoW8kSNWYufCpQYHj/dsBcIVBhGUXAYQ/jy0S+0HeOFpAI7oI4W5MLbUVvIaXXnXfHscCJ77Ze1V3AYre8jvfFbik377fd6cDr2tSYVyu58Moh+GdddDl9FnB2tURpgY/Ac5buCL2LzerkpiWWBqRh/mg16b5/1Cn/RSHO5mL5jOr/UKtDvXs9y8KgnRkeofZG4bvCrlWgt3SNe9MRJdEsa6HYaSLQ1rXVSYmvoPcla0RG8USaLUiFcH04JhcsXZYr7z03WKGsepIJq+COPpy/rWZZLC/iRAhod5Go3pGLuTDrfKnNggc9VA+0F9lPT/jaxoikrdbnHLt0gRMxMg4YVMa2otXcHQV/sAxtJZRqV0aEgOnPlXV3lz9Nc0iuDNn7WtmvVl//7rBZFxNG+39dMbRBFIfKj60EFcMgMwPUQZ7Lqr6XP2XFuxElHC9GkexdzzbKG06dGZes23Pe53lHaOVRYHbJmlsAF0X9jvYJ1Q+B1xcHwCpRw7HvChI9U+R3VTCAXtjZko6DGjdyadQ9Qkn0NRe8qFLIIUtTmWTn9DT0/KFWC3q5K6bthglAtC/rM19mppLy0Zoh2BJrMpJ7f5BljzLa3HRfEJdJaBUvK+v5L56xPUw1O1ciGna3do51o3gqo2aHsi4gaXV8IIRQ0YXs7fBwPE3sLtEIOgCWp88wNT6cVNEXah6o9zq5kH4ObNVSu33p2xzBT1G/gAgDnkmg0e1VYFLdN6v2v+lpCXZdGFv7QpS/2Bz6csRkXx1umSF16nFqucFQoWFca4/cM9o6gD7vooOIyK79iRGfjr17u1t/kOvhY7Az26IAmUHyerkCzQQZNuVeZBsCVg3aDKPC8O3IQIDucl4v9/45Vs8dtFVCeSXP3/rS+mEr6Flr35Mh3AX8hcnby+FukcP971buDsEzZQqhpaq4nu5v7PxsjjRlDxHn1l/Q8ErESjEqHBE+d3tU5BQcZibjo6ZlaWTw5yHmlQCgRaElb4snCZEmwiB4FjnJ2QCSp5zKCZrjAUUmCW3903RW0TvNFF9P6M4AL8IOmVo0Gu2W3p+WvUfyYBfSCxbGWFsEq+8j8CwhCOBFmAbbrY6ITfKtzBSziG2fzfEYwqv/NYQLxDntVu8MVFk9AYB0KeJwPYdzM+XBSGnEv5q57tsuPjsnlSypz07RxKvNtbVkXWgZ1fk/d8MjaFC6UHPtexUJPIhEMR82eoe5YAzkbVa04fKJOWy7D1/s5LwVB0dk2zmkoV0iFjBxn/xpYVjYmNck7WS0ksXKXIZL4MA8Im1eChEO4s1E0x6xEhSU3xsKiLgARuwybUcP3r8zxzlm7mjaxoVPm9DvVjO1qxmZYskAFxgNxiYCwO+KeK4UpMlSfTL2lxS31cPwatC/G9VIpdlX62VCfV14CSIDRsGwfTnoHezs2Pz5tvo++4HH5NBe4TMV6VXq5XUif9gtoBUvnEwg5+jYnaCQiwFaWuxq8R7ahxYt96vDDIqDJFI9si/NuH+Vy/3Ig27rF0Ey3TAsTZ64dXdNJhHtYc0zdg+jEsi5RzeJjTn3AnSEWsT3EyK4RfKTAHPQ7UI1G+KZNVRfprJdARCvF2zdVBaezN71cTKJIh1/0ADbfg1mvdtmOSSp82R/nGxSjYjPgSa08fb6Nxw7ebw4mjTklAEsWJmrrSvbXN12SdIrPQLGMs8rEseB9NFTVURZ8da/ew3lXR++9fzeAV78refp0RMvoS5d8FHRcjidzl3OHcSfuVXacii5+LAgl8cp4AZPC4R5K3BrAzWrucDiO3OkrM0QpwtLI8olcWF28kQOKwXZ81iIc/7Q1FWodIUHKuJjjDlCUHTI0xmuljiz2MjHSL3cvTm4g+cc/tncAhiP5AIl9yBJsQ58ZnW1rJJMmJJrdu2QAE9t+VYUD9VekzZrDJJJXSntMD1vipDLSB7hP41ps4fKrHIT8dbfkIVmHgr8bliaA26jbEnQBLx+Ms5IHg9EHwQUZNOkBzsuBQY/QIRvtpqhK8QmaIzW+Ib8icpSjOHpcjDtcRav3pO6l6CpwhXvQajpuMIWZsdCSknb1ABBdGINLedhBeK+/kragcy6AoiiprjFoSBc/wNRO5cekuA3aGqjpRJuKs+V0bbHF99tD1lhgUhaKwLSOS9GE26KRe2IbWinIITBLpfdFBYOhjuGbFxczt/xOfdjonwsyvv+NgS/0svfnLJirz0xPBhzy4LVDb5//m//BeOpmJbdHsnbJ0rg/QKdBihFvbc16QIs+QRJPmg40AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==" style="height:38px;width:auto;object-fit:contain;flex-shrink:0;" alt="HC Logo"><div style="display:flex;flex-direction:column;"><div class="logo-title" id="hTitle">🔧 PVD Maintenance – บริษัท ฮุ้ยชาง เวคคัม โค๊ตติ้ง (ประเทศไทย) จำกัด</div>
+      <div class="logo-sub" id="hSub">คลิกวันที่มีสีเพื่อดูรายการ</div>
+    </div>
+  </div>
+  <div class="nav-month">
+    <button class="nav-btn" id="prevBtn">‹</button>
+    <div class="month-label" id="monthLabel"></div>
+    <button class="nav-btn" id="nextBtn">›</button>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('th')" title="ภาษาไทย"><img src="https://flagcdn.com/w40/th.png" width="24" height="16" style="border-radius:2px;vertical-align:middle;"></button>
+      <button class="lang-btn" onclick="setLang('my')" title="မြန်မာဘာသာ"><img src="https://flagcdn.com/w40/mm.png" width="24" height="16" style="border-radius:2px;vertical-align:middle;"></button>
+      <button class="lang-btn" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/gb.png" width="24" height="16" style="border-radius:2px;vertical-align:middle;"></button>
+      <button class="lang-btn" onclick="setLang('zh')" title="中文"><img src="https://flagcdn.com/w40/cn.png" width="24" height="16" style="border-radius:2px;vertical-align:middle;"></button>
+    </div>
+    <button onclick="openAdmin()" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;font-weight:700;" title="Admin">⚙️</button>
+    <button id="themeBtn" onclick="toggleTheme()" style="padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:13px;cursor:pointer;font-weight:600;">🌙</button>
+  </div>
+</header>
+
+<main>
+  <!-- PAGE NAV -->
+  <div style="display:flex;gap:6px;margin-bottom:14px;">
+    <button class="page-btn active" id="btnDash" onclick="showPage('dashboard')">📊 Dashboard</button>
+    <button class="page-btn" id="btnCal" onclick="showPage('calendar')">📅 PM Calendar</button>
+  </div>
+
+  <!-- DASHBOARD PAGE -->
+  <div id="pageDashboard">
+    <!-- Top bar: Freq dropdown + PVD dropdown -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <!-- Freq dropdown -->
+      <div class="pvd-filter-wrap" id="dashFreqFilterWrap">
+        <button class="pvd-filter-btn" id="dashFreqFilterBtn" onclick="toggleDashFreqDropdown(event)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>
+          <span id="dashFreqFilterLabel">ทั้งหมด</span>
+        </button>
+        <div class="pvd-dropdown" id="dashFreqDropdown">
+          <div class="pvd-dropdown-title" id="dashFreqDropTitle">ความถี่การบำรุง</div>
+          <div class="pvd-opt selected" data-dtype="all" onclick="setTypeFilter('all')">
+            <span class="pvd-opt-dot" style="background:var(--accent)"></span><span id="dashFreqLabel-all">ทั้งหมด</span><span class="pvd-opt-check" id="dashFreqCheck-all">✓</span>
+          </div>
+          <div class="pvd-opt" data-dtype="1m" onclick="setTypeFilter('1m')">
+            <span class="pvd-opt-dot" style="background:var(--c1m)"></span>1M<span class="pvd-opt-check" id="dashFreqCheck-1m" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-dtype="3m" onclick="setTypeFilter('3m')">
+            <span class="pvd-opt-dot" style="background:var(--c3m)"></span>3M<span class="pvd-opt-check" id="dashFreqCheck-3m" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-dtype="6m" onclick="setTypeFilter('6m')">
+            <span class="pvd-opt-dot" style="background:var(--c6m)"></span>6M<span class="pvd-opt-check" id="dashFreqCheck-6m" style="display:none">✓</span>
+          </div>
+        </div>
+      </div>
+      <!-- PVD machine dropdown -->
+      <div class="pvd-filter-wrap" id="pvdFilterWrap">
+        <button class="pvd-filter-btn" id="pvdFilterBtn" onclick="togglePvdDropdown(event)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>
+          <span id="pvdFilterLabel">เครื่อง</span>
+        </button>
+        <div class="pvd-dropdown" id="pvdDropdown">
+          <div class="pvd-dropdown-title" id="pvdDropdownTitle">เลือกเครื่อง PVD</div>
+          <div class="pvd-opt selected" data-pvd="all" onclick="setPvdFilter('all')">
+            <span class="pvd-opt-dot" style="background:var(--accent)"></span><span id="pvdAllLabel">ทั้งหมด</span><span class="pvd-opt-check" id="pvdCheck-all">✓</span>
+          </div>
+          <div class="pvd-opt" data-pvd="PVD1" onclick="setPvdFilter('PVD1')">
+            <span class="pvd-opt-dot" style="background:#2563eb"></span>PVD 1<span class="pvd-opt-check" id="pvdCheck-PVD1" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-pvd="PVD3" onclick="setPvdFilter('PVD3')">
+            <span class="pvd-opt-dot" style="background:#7c3aed"></span>PVD 3<span class="pvd-opt-check" id="pvdCheck-PVD3" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-pvd="PVD4" onclick="setPvdFilter('PVD4')">
+            <span class="pvd-opt-dot" style="background:#db2777"></span>PVD 4<span class="pvd-opt-check" id="pvdCheck-PVD4" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-pvd="PVD5" onclick="setPvdFilter('PVD5')">
+            <span class="pvd-opt-dot" style="background:#d97706"></span>PVD 5<span class="pvd-opt-check" id="pvdCheck-PVD5" style="display:none">✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Summary Cards -->
+    <div class="dash-cards" id="dashCards"></div>
+    <!-- Spare Parts List -->
+    <div id="spareList"></div>
+  </div>
+
+
+  <!-- ADMIN PAGE -->
+  <div id="pageAdmin" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:800;color:var(--accent);" id="adminPageTitle">⚙️ Admin — Manage Tasks</div>
+      <button class="admin-btn close" id="adminCloseBtn" onclick="showPage('dashboard')">✕ Close</button>
+    </div>
+    <div id="adminContent"></div>
+  </div>
+
+  <!-- CALENDAR PAGE -->
+  <div id="pageCalendar" style="display:none;">
+    <!-- Two dropdown filters: Frequency + Machine -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <!-- Freq dropdown -->
+      <div class="pvd-filter-wrap" id="calFreqFilterWrap">
+        <button class="pvd-filter-btn" id="calFreqFilterBtn" onclick="toggleCalFreqDropdown(event)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>
+          <span id="calFreqFilterLabel">ทั้งหมด</span>
+        </button>
+        <div class="pvd-dropdown" id="calFreqDropdown">
+          <div class="pvd-dropdown-title">ความถี่การบำรุง</div>
+          <div class="pvd-opt selected" data-cfreq="all" onclick="setCalFreqFilter('all')">
+            <span class="pvd-opt-dot" style="background:var(--accent)"></span><span id="calFreqLabel-all">ทั้งหมด</span><span class="pvd-opt-check" id="calFreqCheck-all">✓</span>
+          </div>
+          <div class="pvd-opt" data-cfreq="1m" onclick="setCalFreqFilter('1m')">
+            <span class="pvd-opt-dot" style="background:var(--c1m)"></span>1M<span class="pvd-opt-check" id="calFreqCheck-1m" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-cfreq="3m" onclick="setCalFreqFilter('3m')">
+            <span class="pvd-opt-dot" style="background:var(--c3m)"></span>3M<span class="pvd-opt-check" id="calFreqCheck-3m" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-cfreq="6m" onclick="setCalFreqFilter('6m')">
+            <span class="pvd-opt-dot" style="background:var(--c6m)"></span>6M<span class="pvd-opt-check" id="calFreqCheck-6m" style="display:none">✓</span>
+          </div>
+        </div>
+      </div>
+      <!-- PVD machine dropdown -->
+      <div class="pvd-filter-wrap" id="calPvdFilterWrap">
+        <button class="pvd-filter-btn" id="calPvdFilterBtn" onclick="toggleCalPvdDropdown(event)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/></svg>
+          <span id="calPvdFilterLabel">เครื่อง</span>
+        </button>
+        <div class="pvd-dropdown" id="calPvdDropdown">
+          <div class="pvd-dropdown-title">เลือกเครื่อง PVD</div>
+          <div class="pvd-opt selected" data-cpvd="all" onclick="setCalPvdFilter2('all')">
+            <span class="pvd-opt-dot" style="background:var(--accent)"></span><span>ทั้งหมด</span><span class="pvd-opt-check" id="calPvdCheck-all">✓</span>
+          </div>
+          <div class="pvd-opt" data-cpvd="PVD1" onclick="setCalPvdFilter2('PVD1')">
+            <span class="pvd-opt-dot" style="background:#2563eb"></span>PVD 1<span class="pvd-opt-check" id="calPvdCheck-PVD1" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-cpvd="PVD3" onclick="setCalPvdFilter2('PVD3')">
+            <span class="pvd-opt-dot" style="background:#7c3aed"></span>PVD 3<span class="pvd-opt-check" id="calPvdCheck-PVD3" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-cpvd="PVD4" onclick="setCalPvdFilter2('PVD4')">
+            <span class="pvd-opt-dot" style="background:#db2777"></span>PVD 4<span class="pvd-opt-check" id="calPvdCheck-PVD4" style="display:none">✓</span>
+          </div>
+          <div class="pvd-opt" data-cpvd="PVD5" onclick="setCalPvdFilter2('PVD5')">
+            <span class="pvd-opt-dot" style="background:#d97706"></span>PVD 5<span class="pvd-opt-check" id="calPvdCheck-PVD5" style="display:none">✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="mh">
+      <div><div class="mdate" id="mdate"></div><div class="mdatesub" id="mdatesub"></div></div>
+      <button class="mcl" id="closeBtn">✕</button>
+    </div>
+    <div class="mb" id="mbody"></div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose">✕</button>
+  <div id="lbContent"></div>
+</div>
+
+<script>
+// ===== TRANSLATIONS =====
+const LANG = {
+  th: {
+    title: '🔧 PVD Maintenance – บริษัท ฮุ้ยชาง เวคคัม โค๊ตติ้ง (ประเทศไทย) จำกัด',
+    sub: 'กดวันที่มีสีเพื่อดูรายการและบันทึกผล',
+    all: 'ทั้งหมด',
+    export: '📥 Export CSV',
+    days: ['อา','จ','อ','พ','พฤ','ศ','ส'],
+    months: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+    monthsFull: ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'],
+    weekdays: ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'],
+    sunday: '(หยุด)',
+    notask: '📅 ไม่มีรายการ PM\nวันนี้ไม่มีงาน Maintenance',
+    freqLabel: {m1:'รายเดือน (1M)',m3:'ราย 3 เดือน (3M)',m6:'ราย 6 เดือน (6M)',sp:'Spare Parts'},
+    status: {ok:'✅ ปกติ / OK',ng:'❌ ผิดปกติ / NG',chg:'🔄 เปลี่ยน'},
+    comment: 'หมายเหตุ / รายละเอียด...',
+    mediaLabel: '📎 แนบรูป / วิดีโอ',
+    uploadBtn: '📷 เลือกรูปหรือวิดีโอ',
+    saveBtn: '💾 บันทึก',
+    editBtn: '✏️ แก้ไข',
+    toast: '✅ บันทึกแล้ว!',
+    noExport: 'ยังไม่มีข้อมูล\nกรุณาบันทึกก่อนแล้วค่อย Export',
+    abnormal: { title:'⚠️ พบความผิดปกติ – กรุณากรอกข้อมูลเพิ่มเติม', detailLabel:'รายละเอียดปัญหา *', detailPlaceholder:'อธิบายปัญหาให้ละเอียด...', severityLabel:'ระดับความรุนแรง *', sevLow:'🟡 เล็กน้อย', sevMed:'🟠 ปานกลาง', sevHigh:'🔴 รุนแรง', sevCrit:'⛔ วิกฤต', required:'กรุณากรอกรายละเอียดและเลือกระดับความรุนแรง', caCreated:'⚠️ สร้าง CA Task แล้ว!' },
+    ca: { title:'🔧 งานซ่อม / Corrective Action', from:'มาจากงาน', detail:'รายละเอียดปัญหา', severity:'ระดับความรุนแรง', status:'สถานะ', pending:'⏳ รอซ่อม', inprog:'🔨 กำลังดำเนินการ', done:'✅ ซ่อมแล้ว / ปิดงาน', createdAt:'สร้างเมื่อ', noCA:'ไม่มีงานซ่อมในขณะนี้', updateStatus:'อัปเดตสถานะ' },
+    ui: {
+      allMachines: 'ทั้งหมด', machine: 'เครื่อง', selectMachine: 'เลือกเครื่อง PVD',
+      dashboard: '📊 Dashboard', calendar: '📅 ปฏิทิน PM',
+      adminTitle: '⚙️ Admin — จัดการ Task', adminClose: '✕ ปิด',
+      pinTitle: 'กรอก PIN เพื่อเข้าสู่โหมดแอดมิน', pinLogin: 'เข้าสู่ระบบ', pinCancel: 'ยกเลิก', pinWrong: 'PIN ไม่ถูกต้อง',
+      pinChangeTitle: '🔐 เปลี่ยน PIN', pinNewPlaceholder: 'PIN ใหม่ (4-6 ตัวเลข)', pinSave: 'บันทึก PIN',
+      pinHint: '💡 หากต้องการเพิ่ม Task ใหม่ ให้ไปที่หน้าปฏิทิน แล้วกดวันที่ที่ต้องการ',
+      requireLogin: 'ต้อง Login Admin ก่อน',
+      quickAddTitle: '➕ เพิ่ม Task ใหม่',
+      qaThPlaceholder: 'ชื่องาน (ไทย) *', qaEnPlaceholder: 'Task Name (EN) *',
+      qaCatPlaceholder: 'Category เช่น Oil, Belt',
+      qaFreq1m: 'รายเดือน (1M)', qaFreq3m: 'ราย 3 เดือน (3M)', qaFreq6m: 'ราย 6 เดือน (6M)',
+      qaMachine: 'เครื่อง PVD *', qaStdPlaceholder: 'มาตรฐาน / เกณฑ์ (ไม่บังคับ)',
+      qaPickDate: '📅 เลือกวันที่ในปฏิทิน *',
+      qaSaveMore: '💾 บันทึก + เพิ่มอีก', qaSaveClose: '✅ บันทึก + ปิด',
+      qaSessionLabel: (n) => `📋 Task ที่เพิ่มไปแล้ว (${n})`,
+      qaDateDisplay: (d, m, y) => `✅ เลือกวันที่ ${d} ${m} ${y}`,
+      qaDateLabel: (d, m, y) => `วันที่ ${d} ${m} ${y}`,
+      quickAddBtn: '➕ เพิ่ม Task วันนี้',
+      qaValidate: 'กรอกชื่องาน เลือกวันในปฏิทิน และเลือกเครื่องอย่างน้อย 1 ตัว',
+      qaToast: (d, m, y, machines) => `✅ เพิ่ม Task วันที่ ${d} ${m} ${y} (${machines})`,
+      selectStatusFirst: 'กรุณาเลือก OK / NG / เปลี่ยน ก่อนบันทึก',
+      saving: '⏳ กำลังบันทึก...',
+      syncOk: '✅ Sync สำเร็จ!',
+      syncFail: '⚠️ Sync ไม่สำเร็จ: ',
+      saveSheetFail: '⚠️ บันทึก Sheet ไม่สำเร็จ (บันทึกในเครื่องแล้ว)',
+      inspector: '👤 ชื่อผู้ตรวจ',
+    },
+    dash: {
+      overdue: 'เกินกำหนดแล้ว', critical: 'ใกล้ครบกำหนด ≤ 30 วัน', warning: 'ต้องดำเนินการใน 60 วัน', normal: 'ปกติ ยังไม่ถึงกำหนด',
+      secUnknown: '⚪ ยังไม่มีข้อมูลวันเปลี่ยน', secOverdue: '🔴 เกินกำหนด', secCritical: '🟠 ใกล้ครบกำหนด ≤ 30 วัน', secWarning: '🟡 ต้องดำเนินการใน 60 วัน', secOk: '🟢 ปกติ',
+      noItems: 'ไม่มีรายการในกลุ่มนี้',
+      badgeOverdue: (d) => `เกิน ${Math.abs(d)} วัน`, badgeDaysLeft: (d) => `อีก ${d} วัน`, badgeUnknown: 'ยังไม่มีข้อมูล',
+      lastReplaced: 'เปลี่ยนล่าสุด', noData: 'ยังไม่มีข้อมูล', everyDays: (d) => `เปลี่ยนทุก ${d} วัน`,
+      updateBtn: '📅 อัปเดต', updatePrompt: (name) => `อัปเดตวันที่เปลี่ยนล่าสุด\n${name}\n\nรูปแบบ: YYYY-MM-DD\nเช่น ${new Date().toISOString().slice(0,10)}`,
+      toastUpdate: '✅ อัปเดตวันเปลี่ยนแล้ว!',
+      taskSecOverdue: '🔴 งาน PM เกินกำหนด', taskSecCritical: '🟠 งาน PM ใกล้กำหนด ≤ 30 วัน', taskSecWarning: '🟡 งาน PM ใน 60 วัน', taskSecOk: '🟢 งาน PM ปกติ',
+      taskDue: (d) => `กำหนด ${d}`, taskOverdueDays: (d) => `เกิน ${d} วัน`, taskDaysLeft: (d) => `อีก ${d} วัน`, overdueRemark: "เกินกำหนด — รีบดำเนินการ!",
+      showingMonth: 'แสดงผลเดือน',
+      doneSection: '✅ ดำเนินการแล้ว (เดือนนี้)', caSection: '🔧 งานซ่อม / CA Task',
+      resultSummary: 'สรุปผลตรวจเดือนนี้', okCount: (n)=>`🟢 ปกติ ${n} รายการ`, ngCount: (n)=>`🔴 ผิดปกติ ${n} รายการ`, chgCount: (n)=>`🟡 เปลี่ยน ${n} รายการ`,
+    },
+  },
+  my: {
+    title: '🔧 PVD Maintenance – Huichang Vacuum Coating (ထိုင်းနိုင်ငံ) ကုမ္ပဏီလီမိတက်',
+    sub: 'အရောင်ရှိသောနေ့ကို နှိပ်၍ အလုပ်များကို ကြည့်ပါ',
+    all: 'အားလုံး',
+    export: '📥 CSV ထုတ်ယူ',
+    days: ['တနင်္ဂနွေ','တနင်္လာ','အင်္ဂါ','ဗုဒ္ဓဟူး','ကြာသပတေး','သောကြာ','စနေ'],
+    months: ['ဇန်','ဖေ','မတ်','ဧ','မေ','ဇွန်','ဇူ','ဩ','စက်','အောက်','နို','ဒီ'],
+    monthsFull: ['ဇန်နဝါရီ','ဖေဖော်ဝါရီ','မတ်','ဧပြီ','မေ','ဇွန်','ဇူလိုင်','ဩဂုတ်','စက်တင်ဘာ','အောက်တိုဘာ','နိုဝင်ဘာ','ဒီဇင်ဘာ'],
+    weekdays: ['တနင်္ဂနွေ','တနင်္လာ','အင်္ဂါ','ဗုဒ္ဓဟူး','ကြာသပတေး','သောကြာ','စနေ'],
+    sunday: '(ရုံးပိတ်)',
+    notask: '📅 PM အလုပ်မရှိပါ\nဒီနေ့ ထိန်းသိမ်းမှုမရှိပါ',
+    freqLabel: {m1:'လစဉ် (1M)',m3:'၃လတစ်ကြိမ် (3M)',m6:'၆လတစ်ကြိမ် (6M)',sp:'အပိုပစ္စည်း'},
+    status: {ok:'✅ ပုံမှန် / OK',ng:'❌ မပုံမှန် / NG',chg:'🔄 အစားထိုး'},
+    comment: 'မှတ်ချက် / အသေးစိတ်...',
+    mediaLabel: '📎 ဓာတ်ပုံ / ဗီဒီယို တွဲပါ',
+    uploadBtn: '📷 ဓာတ်ပုံ သို့မဟုတ် ဗီဒီယို ရွေးပါ',
+    saveBtn: '💾 သိမ်းဆည်း',
+    editBtn: '✏️ ပြင်ဆင်',
+    toast: '✅ သိမ်းဆည်းပြီး!',
+    noExport: 'ဒေတာမရှိသေးပါ\nကျေးဇူးပြု၍ အရင်သိမ်းပါ',
+    abnormal: { title:'⚠️ မပုံမှန် တွေ့ရှိ – ကျေးဇူးပြု၍ အသေးစိတ် ဖြည့်ပါ', detailLabel:'ပြဿနာ အသေးစိတ် *', detailPlaceholder:'ပြဿနာကို အသေးစိတ် ဖော်ပြပါ...', severityLabel:'ပြင်းထန်မှု အဆင့် *', sevLow:'🟡 အနည်းငယ်', sevMed:'🟠 အလယ်အလတ်', sevHigh:'🔴 ပြင်းထန်', sevCrit:'⛔ အရေးပေါ်', required:'ကျေးဇူးပြု၍ အသေးစိတ် ဖြည့်ပြီး အဆင့် ရွေးပါ', caCreated:'⚠️ CA Task ဖန်တီးပြီး!' },
+    ca: { title:'🔧 ပြုပြင်ရေး အလုပ်', from:'မူလ အလုပ်', detail:'ပြဿနာ', severity:'ပြင်းထန်မှု', status:'အခြေအနေ', pending:'⏳ ပြုပြင်ရန် စောင့်ဆိုင်း', inprog:'🔨 လုပ်ဆောင်နေ', done:'✅ ပြုပြင်ပြီး / ပိတ်ပြီ', createdAt:'ဖန်တီးချိန်', noCA:'ပြုပြင်ရမည့် အလုပ် မရှိပါ', updateStatus:'အခြေအနေ အပ်ဒိတ်' },
+    ui: {
+      allMachines: 'အားလုံး', machine: 'စက်', selectMachine: 'PVD စက် ရွေးပါ',
+      dashboard: '📊 Dashboard', calendar: '📅 PM ပြက္ခဒိန်',
+      adminTitle: '⚙️ Admin — Task စီမံ', adminClose: '✕ ပိတ်',
+      pinTitle: 'Admin မုဒ် ဝင်ရောက်ရန် PIN ထည့်ပါ', pinLogin: 'ဝင်ရောက်', pinCancel: 'ပယ်ဖျက်', pinWrong: 'PIN မမှန်ကန်',
+      pinChangeTitle: '🔐 PIN ပြောင်း', pinNewPlaceholder: 'PIN အသစ် (4-6 လုံး)', pinSave: 'PIN သိမ်း',
+      pinHint: '💡 Task အသစ် ထည့်ရန် ပြက္ခဒိန်သို့ သွား၍ ရက်ကို နှိပ်ပါ',
+      requireLogin: 'Admin ဦးစွာ ဝင်ရောက်ရပါမည်',
+      quickAddTitle: '➕ Task အသစ် ထည့်ရန်',
+      qaThPlaceholder: 'အလုပ်အမည် (ထိုင်း) *', qaEnPlaceholder: 'Task Name (EN) *',
+      qaCatPlaceholder: 'Category ဥပမာ Oil, Belt',
+      qaFreq1m: 'လစဉ် (1M)', qaFreq3m: '၃လတစ်ကြိမ် (3M)', qaFreq6m: '၆လတစ်ကြိမ် (6M)',
+      qaMachine: 'PVD စက် *', qaStdPlaceholder: 'စံ / သတ်မှတ်ချက် (မဖြစ်မနေမဟုတ်)',
+      qaPickDate: '📅 ပြက္ခဒိန်မှ ရက် ရွေးပါ *',
+      qaSaveMore: '💾 သိမ်း + ထပ်ထည့်', qaSaveClose: '✅ သိမ်း + ပိတ်',
+      qaSessionLabel: (n) => `📋 ထည့်ပြီးသော Task (${n})`,
+      qaDateDisplay: (d, m, y) => `✅ ရက် ${d} ${m} ${y} ရွေးပြီ`,
+      qaDateLabel: (d, m, y) => `ရက် ${d} ${m} ${y}`,
+      quickAddBtn: '➕ ဒီနေ့ Task ထည့်',
+      qaValidate: 'အလုပ်အမည် ထည့်ပါ၊ ပြက္ခဒိန်မှ ရက် ရွေးပါ၊ စက် တစ်ခုကိုရ ရွေးပါ',
+      qaToast: (d, m, y, machines) => `✅ ရက် ${d} ${m} ${y} Task ထည့်ပြီ (${machines})`,
+      selectStatusFirst: 'OK / NG / အစားထိုး ရွေးပါ',
+      saving: '⏳ သိမ်းနေသည်...',
+      syncOk: '✅ Sync ပြီးပြီ!',
+      syncFail: '⚠️ Sync မအောင်မြင်: ',
+      saveSheetFail: '⚠️ Sheet သိမ်းမရ (ကိုယ်ပိုင်စက်တွင် သိမ်းပြီး)',
+      inspector: '👤 စစ်ဆေးသူ',
+    },
+    dash: {
+      overdue: 'သတ်မှတ်ချိန် ကျော်လွန်ပြီ', critical: 'နီးကပ်နေပြီ ≤ 30 ရက်', warning: '60 ရက်အတွင်း လုပ်ဆောင်ရမည်', normal: 'ပုံမှန် - သတ်မှတ်ချိန်မရောက်သေး',
+      secUnknown: '⚪ ရက်စွဲ ဒေတာမရှိ', secOverdue: '🔴 သတ်မှတ်ချိန် ကျော်လွန်ပြီ', secCritical: '🟠 နီးကပ်နေပြီ ≤ 30 ရက်', secWarning: '🟡 60 ရက်အတွင်း လုပ်ဆောင်ရမည်', secOk: '🟢 ပုံမှန်',
+      noItems: 'ဒီအုပ်စုတွင် မရှိပါ',
+      badgeOverdue: (d) => `${Math.abs(d)} ရက် ကျော်ပြီ`, badgeDaysLeft: (d) => `${d} ရက် ကျန်သေး`, badgeUnknown: 'ဒေတာမရှိ',
+      lastReplaced: 'နောက်ဆုံးလဲ', noData: 'ဒေတာမရှိ', everyDays: (d) => `${d} ရက်တိုင်း လဲသည်`,
+      updateBtn: '📅 အပ်ဒိတ်', updatePrompt: (name) => `နောက်ဆုံး လဲလှယ်သည့်ရက် ထည့်ပါ\n${name}\n\nပုံစံ: YYYY-MM-DD\nဥပမာ ${new Date().toISOString().slice(0,10)}`,
+      toastUpdate: '✅ ရက်စွဲ အပ်ဒိတ်ပြီး!',
+      taskSecOverdue: '🔴 PM အလုပ် သတ်မှတ်ချိန် ကျော်ပြီ', taskSecCritical: '🟠 PM အလုပ် နီးကပ်နေပြီ ≤ 30 ရက်', taskSecWarning: '🟡 PM အလုပ် 60 ရက်အတွင်း', taskSecOk: '🟢 PM အလုပ် ပုံမှန်',
+      taskDue: (d) => `ရက် ${d}`, taskOverdueDays: (d) => `${d} ရက် ကျော်ပြီ`, taskDaysLeft: (d) => `${d} ရက် ကျန်`, overdueRemark: "သတ်မှတ်ချိန် ကျော်ပြီ — အမြန်လုပ်ဆောင်ပါ!",
+      showingMonth: 'ပြသနေသောလ',
+      doneSection: '✅ ပြီးစီးပြီ (ဒီလ)', caSection: '🔧 ပြုပြင်ရမည့် အလုပ်',
+      resultSummary: 'ဒီလ စစ်ဆေးမှု အကျဉ်းချုပ်', okCount: (n)=>`🟢 ပုံမှန် ${n} ခု`, ngCount: (n)=>`🔴 မပုံမှန် ${n} ခု`, chgCount: (n)=>`🟡 အစားထိုး ${n} ခု`,
+    },
+  },
+  en: {
+    title: '🔧 PVD Maintenance – HUICHANG VACUUM COATING (THAILAND) CO., LTD.',
+    sub: 'Tap a colored date to view tasks and log results',
+    all: 'All',
+    export: '📥 Export CSV',
+    days: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    monthsFull: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    weekdays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    sunday: '(Holiday)',
+    notask: '📅 No PM tasks\nNo maintenance scheduled today',
+    freqLabel: {m1:'Monthly (1M)',m3:'Quarterly (3M)',m6:'Semi-Annual (6M)',sp:'Spare Parts'},
+    status: {ok:'✅ Normal / OK',ng:'❌ Abnormal / NG',chg:'🔄 Replace'},
+    comment: 'Notes / Details...',
+    mediaLabel: '📎 Attach Photo / Video',
+    uploadBtn: '📷 Select Photo or Video',
+    saveBtn: '💾 Save',
+    editBtn: '✏️ Edit',
+    toast: '✅ Saved!',
+    noExport: 'No data yet\nPlease log some tasks first',
+    abnormal: { title:'⚠️ Abnormal Found – Please Fill Details', detailLabel:'Problem Description *', detailPlaceholder:'Describe the issue in detail...', severityLabel:'Severity Level *', sevLow:'🟡 Low', sevMed:'🟠 Medium', sevHigh:'🔴 High', sevCrit:'⛔ Critical', required:'Please fill in description and select severity', caCreated:'⚠️ CA Task Created!' },
+    ca: { title:'🔧 Corrective Action Task', from:'Source Task', detail:'Problem', severity:'Severity', status:'Status', pending:'⏳ Pending Repair', inprog:'🔨 In Progress', done:'✅ Repaired / Closed', createdAt:'Created At', noCA:'No repair tasks at this time', updateStatus:'Update Status' },
+    ui: {
+      allMachines: 'All', machine: 'Machine', selectMachine: 'Select PVD Machine',
+      dashboard: '📊 Dashboard', calendar: '📅 PM Calendar',
+      adminTitle: '⚙️ Admin — Manage Tasks', adminClose: '✕ Close',
+      pinTitle: 'Enter PIN to access Admin mode', pinLogin: 'Login', pinCancel: 'Cancel', pinWrong: 'Incorrect PIN',
+      pinChangeTitle: '🔐 Change PIN', pinNewPlaceholder: 'New PIN (4-6 digits)', pinSave: 'Save PIN',
+      pinHint: '💡 To add a new task, go to the Calendar and tap the desired date',
+      requireLogin: 'Admin login required first',
+      quickAddTitle: '➕ Add New Task',
+      qaThPlaceholder: 'Task Name (Thai) *', qaEnPlaceholder: 'Task Name (EN) *',
+      qaCatPlaceholder: 'Category e.g. Oil, Belt',
+      qaFreq1m: 'Monthly (1M)', qaFreq3m: 'Quarterly (3M)', qaFreq6m: 'Semi-Annual (6M)',
+      qaMachine: 'PVD Machine *', qaStdPlaceholder: 'Standard / Criteria (optional)',
+      qaPickDate: '📅 Select Date from Calendar *',
+      qaSaveMore: '💾 Save + Add More', qaSaveClose: '✅ Save + Close',
+      qaSessionLabel: (n) => `📋 Tasks Added (${n})`,
+      qaDateDisplay: (d, m, y) => `✅ Selected ${d} ${m} ${y}`,
+      qaDateLabel: (d, m, y) => `Day ${d} ${m} ${y}`,
+      quickAddBtn: '➕ Add Task for Today',
+      qaValidate: 'Enter task name, select a calendar date, and choose at least 1 machine',
+      qaToast: (d, m, y, machines) => `✅ Task added for ${d} ${m} ${y} (${machines})`,
+      selectStatusFirst: 'Please select OK / NG / Replace first',
+      saving: '⏳ Saving...',
+      syncOk: '✅ Sync OK!',
+      syncFail: '⚠️ Sync failed: ',
+      saveSheetFail: '⚠️ Sheet save failed (saved locally)',
+      inspector: '👤 Inspector Name',
+    },
+    dash: {
+      overdue: 'Overdue', critical: 'Due within 30 Days', warning: 'Due within 60 Days', normal: 'Normal – Not Due Yet',
+      secUnknown: '⚪ No Date Data Yet', secOverdue: '🔴 Overdue', secCritical: '🟠 Due within 30 Days', secWarning: '🟡 Due within 60 Days', secOk: '🟢 Normal',
+      noItems: 'No items in this category',
+      badgeOverdue: (d) => `${Math.abs(d)} days overdue`, badgeDaysLeft: (d) => `${d} days left`, badgeUnknown: 'No data',
+      lastReplaced: 'Last replaced', noData: 'No data yet', everyDays: (d) => `Replace every ${d} days`,
+      updateBtn: '📅 Update', updatePrompt: (name) => `Update last replacement date\n${name}\n\nFormat: YYYY-MM-DD\ne.g. ${new Date().toISOString().slice(0,10)}`,
+      toastUpdate: '✅ Date updated!',
+      taskSecOverdue: '🔴 PM Tasks Overdue', taskSecCritical: '🟠 PM Tasks Due ≤ 30 Days', taskSecWarning: '🟡 PM Tasks Due within 60 Days', taskSecOk: '🟢 PM Tasks Normal',
+      taskDue: (d) => `Due ${d}`, taskOverdueDays: (d) => `${d} days overdue`, taskDaysLeft: (d) => `${d} days left`, overdueRemark: "Overdue — Action Required!",
+      showingMonth: 'Showing month',
+      doneSection: '✅ Completed (This Month)', caSection: '🔧 Repair / CA Tasks',
+      resultSummary: 'Monthly Inspection Summary', okCount: (n)=>`🟢 Normal ${n}`, ngCount: (n)=>`🔴 Abnormal ${n}`, chgCount: (n)=>`🟡 Replace ${n}`,
+    },
+  },
+  zh: {
+    title: '🔧 PVD Maintenance – 汇昌真空镀膜（泰国）有限公司',
+    sub: '点击有颜色的日期查看任务并记录结果',
+    all: '全部',
+    export: '📥 导出 CSV',
+    days: ['日','一','二','三','四','五','六'],
+    months: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    monthsFull: ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
+    weekdays: ['周日','周一','周二','周三','周四','周五','周六'],
+    sunday: '(休息)',
+    notask: '📅 无PM任务\n今天没有维护计划',
+    freqLabel: {m1:'每月 (1M)',m3:'每季度 (3M)',m6:'每半年 (6M)',sp:'备件'},
+    status: {ok:'✅ 正常 / OK',ng:'❌ 异常 / NG',chg:'🔄 更换'},
+    comment: '备注 / 详情...',
+    mediaLabel: '📎 附加图片 / 视频',
+    uploadBtn: '📷 选择图片或视频',
+    saveBtn: '💾 保存',
+    editBtn: '✏️ 编辑',
+    toast: '✅ 已保存！',
+    noExport: '暂无数据\n请先记录任务再导出',
+    dash: {
+      overdue: '已超期', critical: '30天内到期', warning: '60天内需处理', normal: '正常 – 未到期',
+      secUnknown: '⚪ 暂无更换日期', secOverdue: '🔴 已超期', secCritical: '🟠 30天内到期', secWarning: '🟡 60天内需处理', secOk: '🟢 正常',
+      noItems: '该分类暂无项目',
+      badgeOverdue: (d) => `超期 ${Math.abs(d)} 天`, badgeDaysLeft: (d) => `还剩 ${d} 天`, badgeUnknown: '暂无数据',
+      lastReplaced: '上次更换', noData: '暂无数据', everyDays: (d) => `每 ${d} 天更换`,
+      updateBtn: '📅 更新', updatePrompt: (name) => `更新上次更换日期\n${name}\n\n格式: YYYY-MM-DD\n例如 ${new Date().toISOString().slice(0,10)}`,
+      toastUpdate: '✅ 日期已更新！',
+      taskSecOverdue: '🔴 PM任务已超期', taskSecCritical: '🟠 PM任务30天内到期', taskSecWarning: '🟡 PM任务60天内', taskSecOk: '🟢 PM任务正常',
+      taskDue: (d) => `到期 ${d}`, taskOverdueDays: (d) => `超期 ${d} 天`, taskDaysLeft: (d) => `还剩 ${d} 天`, overdueRemark: "已超期 — 请立即处理!",
+      showingMonth: '显示月份',
+      doneSection: '✅ 已完成（本月）', caSection: '🔧 待修复任务',
+      resultSummary: '本月检查结果', okCount: (n)=>`🟢 正常 ${n} 项`, ngCount: (n)=>`🔴 异常 ${n} 项`, chgCount: (n)=>`🟡 更换 ${n} 项`,
+    },
+    abnormal: { title:'⚠️ 发现异常 – 请填写详情', detailLabel:'问题描述 *', detailPlaceholder:'请详细描述问题...', severityLabel:'严重程度 *', sevLow:'🟡 轻微', sevMed:'🟠 中等', sevHigh:'🔴 严重', sevCrit:'⛔ 紧急', required:'请填写问题描述并选择严重程度', caCreated:'⚠️ 已创建修复任务！' },
+    ca: { title:'🔧 修复任务', from:'来源', detail:'问题', severity:'严重程度', status:'状态', pending:'⏳ 待修复', inprog:'🔨 处理中', done:'✅ 已完成/关闭', createdAt:'创建时间', noCA:'暂无待修复任务', updateStatus:'更新状态' },
+    ui: {
+      allMachines: '全部', machine: '机器', selectMachine: '选择 PVD 机器',
+      dashboard: '📊 仪表板', calendar: '📅 PM 日历',
+      adminTitle: '⚙️ 管理员 — 任务管理', adminClose: '✕ 关闭',
+      pinTitle: '输入 PIN 进入管理员模式', pinLogin: '登录', pinCancel: '取消', pinWrong: 'PIN 不正确',
+      pinChangeTitle: '🔐 修改 PIN', pinNewPlaceholder: '新 PIN (4-6 位数字)', pinSave: '保存 PIN',
+      pinHint: '💡 如需添加新任务，请前往日历页面，点击所需日期',
+      requireLogin: '请先以管理员身份登录',
+      quickAddTitle: '➕ 添加新任务',
+      qaThPlaceholder: '任务名称 (泰文) *', qaEnPlaceholder: 'Task Name (EN) *',
+      qaCatPlaceholder: '类别 例如 Oil, Belt',
+      qaFreq1m: '每月 (1M)', qaFreq3m: '每季度 (3M)', qaFreq6m: '每半年 (6M)',
+      qaMachine: 'PVD 机器 *', qaStdPlaceholder: '标准 / 判定基准 (选填)',
+      qaPickDate: '📅 从日历选择日期 *',
+      qaSaveMore: '💾 保存 + 继续添加', qaSaveClose: '✅ 保存 + 关闭',
+      qaSessionLabel: (n) => `📋 已添加任务 (${n})`,
+      qaDateDisplay: (d, m, y) => `✅ 已选择 ${y}年${m}${d}日`,
+      qaDateLabel: (d, m, y) => `${d} ${m} ${y}`,
+      quickAddBtn: '➕ 添加今日任务',
+      qaValidate: '请输入任务名称、选择日历日期，并至少选择一台机器',
+      qaToast: (d, m, y, machines) => `✅ 已添加 ${d} ${m} ${y} 任务 (${machines})`,
+      selectStatusFirst: '请先选择 OK / NG / 更换',
+      saving: '⏳ 保存中...',
+      syncOk: '✅ 同步成功！',
+      syncFail: '⚠️ 同步失败: ',
+      saveSheetFail: '⚠️ 表格保存失败（已本地保存）',
+      inspector: '👤 检查员',
+    },
+  },
+};
+
+// ===== TASKS =====
+// machine color classes: pvd1=blue, pvd3=purple, pvd4=pink, pvd5=amber
+const MACHINES = [
+  {id:'PVD1', color:'#2563eb', label:'PVD1'},
+  {id:'PVD3', color:'#7c3aed', label:'PVD3'},
+  {id:'PVD4', color:'#db2777', label:'PVD4'},
+  {id:'PVD5', color:'#d97706', label:'PVD5'},
+];
+
+// 1M tasks — รายเดือน (แต่ละเครื่องคนละวัน)
+// PVD1=วันที่2, PVD3=วันที่3, PVD4=วันที่4, PVD5=วันที่5
+const TASK_TEMPLATES = {
+  '1m': [
+    {id:'oil',    th:'น้ำมันเครื่องปั๊ม / ปั๊มสุญญากาศ', en:'Vacuum Pump Oil', zh:'真空泵油', my:'Pump ဆီ', cat:'Oil',         std_th:'ดู level ทุกเดือน | เปลี่ยนทุก 3 เดือน',      std_en:'Check level monthly | Change every 3 months', freq:'1m'},
+    {id:'belt',   th:'สายพาน (Belt) – ปั๊มสุญญากาศ',      en:'BANDO Belt',    zh:'BANDO皮带', my:'BANDO ခါးပတ်', cat:'Belt',    std_th:'ไม่มีรอยแตก แตกหัก หลวม',                      std_en:'No cracks or breaks', freq:'1m'},
+    {id:'airhose',th:'ท่อลม Air Hose (ปั๊ม 5x8,4x6,12x16,10x1mm)', en:'Air Hose', zh:'气管', my:'လေပိုက်', cat:'Hose',      std_th:'ตรวจรอยรั่ว ไม่บิดงอ | เปรียบกับ stock min', std_en:'No leaks, not kinked', freq:'1m'},
+    {id:'waterhose',th:'ท่อน้ำ Water Hose (8x12,6.5x10,12x16mm)', en:'Water Hose', zh:'水管', my:'ရေပိုက်', cat:'Hose',      std_th:'ตรวจรอยรั่ว ไม่แตกหัก | เปรียบกับ stock min',std_en:'No leaks, not cracked', freq:'1m'},
+    {id:'pvdlamp', th:'หลอดไฟ PVD (ZJ-2T/Di5-5)',         en:'PVD Lamp',      zh:'PVD灯管', my:'PVD မီးသီး', cat:'Electrical', std_th:'ทดสอบติด-ดับ | ตรวจปริมาณ stock',              std_en:'Test on/off | Check stock qty', freq:'1m'},
+    {id:'filter',  th:'ฟิลเตอร์ระบบน้ำหล่อเย็น',          en:'Cooling Water Filter', zh:'冷却水过滤器', my:'ရေအေးစစ်', cat:'Filter', std_th:'ล้างหรือเปลี่ยน ตามสภาพ',              std_en:'Clean or replace as needed', freq:'1m'},
+    {id:'chiller', th:'ระบบ Chiller / น้ำหล่อเย็น',       en:'Chiller System', zh:'冷水机系统', my:'Chiller စနစ်', cat:'System', std_th:'Temperature ปกติ ไม่ตะกรัน',               std_en:'Normal temp, no scale', freq:'1m'},
+    {id:'vacuum',  th:'ค่า Vacuum Pressure ห้อง Chamber', en:'Chamber Vacuum Level', zh:'腔体真空度', my:'Chamber ဖိအား', cat:'Process', std_th:'ค่าตาม Spec (Pa)',                    std_en:'Within spec (Pa)', freq:'1m'},
+    {id:'arc-rg',  th:'ARC Target – ROSEGOLD (PVD4)',      en:'ARC ROSEGOLD Target', zh:'ARC玫瑰金靶材', my:'ARC ROSEGOLD', cat:'Consumable', std_th:'ตรวจปริมาณ stock | min 5 pcs',   std_en:'Check stock | min 5 pcs', freq:'1m', pvd4only:true},
+    {id:'arc-ti',  th:'ARC Target – Ti Tin (PVD4, PVD3-5-1)', en:'ARC Ti Tin Target', zh:'ARC钛锡靶材', my:'ARC Ti Tin', cat:'Consumable', std_th:'ตรวจปริมาณ stock | min 5 pcs',    std_en:'Check stock | min 5 pcs', freq:'1m', pvd34only:true},
+    {id:'oring',   th:'Sealing / O-Ring ประตูห้อง Chamber', en:'Chamber O-Ring', zh:'腔体O型圈', my:'Chamber O-Ring', cat:'Seal', std_th:'ไม่มีรอยรั่ว แตก หรือดึกดูป',              std_en:'No leaks, cracks or deformation', freq:'1m'},
+    {id:'runhrs',  th:'บันทึกชั่วโมงการทำงานเครื่อง',     en:'Machine Running Hours', zh:'运行时间记录', my:'မောင်းချိန်မှတ်တမ်း', cat:'Record', std_th:'จดชั่วโมง: hrs/เดือน',        std_en:'Record hrs/month', freq:'1m'},
+  ],
+  '3m': [
+    {id:'oilchg',  th:'เปลี่ยนน้ำมันปั๊มสุญญากาศ',        en:'Vacuum Pump Oil Change', zh:'更换真空泵油', my:'Pump ဆီ လဲ', cat:'Oil',       std_th:'เปลี่ยนทุก 3 เดือน หรือตามชั่วโมงใช้งาน', std_en:'Change every 3M or by usage hrs', freq:'3m'},
+    {id:'arcpwr',  th:'ตรวจสอบและเช่าทำความสะอาด ARC Power Supply', en:'ARC Power Supply Check', zh:'ARC电源检查', my:'ARC Power Supply', cat:'Electrical', std_th:'ทำความสะอาด ตรวจ Connection ไม่มีรอยไหม้', std_en:'Clean, check connection, no burns', freq:'3m'},
+    {id:'biaspwr', th:'ตรวจสอบ Bias Power Supply',         en:'Bias Power Supply Check', zh:'偏压电源检查', my:'Bias Power Supply', cat:'Electrical', std_th:'ตรวจ Output Voltage/Current ตาม Spec',      std_en:'Check output V/I per spec', freq:'3m'},
+    {id:'deepclean',th:'ทำความสะอาดห้อง Chamber ครั้งใหญ่', en:'Deep Clean Chamber', zh:'深度清洁腔体', my:'Chamber သန့်ရှင်း', cat:'Cleaning', std_th:'ไม่มีคราบ Deposit, ฝิ้นเก่า',              std_en:'No deposit or old residue', freq:'3m'},
+    {id:'shutter', th:'ตรวจสอบ / ล้าง Shutter และ Fixture', en:'Shutter & Fixture Inspection', zh:'挡板夹具检查', my:'Shutter & Fixture', cat:'Parts', std_th:'ไม่มีการบิดงอ การทำงานลื่น',              std_en:'No deformation, smooth operation', freq:'3m'},
+    {id:'heater',  th:'ตรวจ Thermocouple / Heater ห้อง',  en:'Heater & Thermocouple Check', zh:'加热器热电偶检查', my:'Heater & Thermocouple', cat:'Heating', std_th:'ค่า Temp ถูกต้อง ไม่มีสัญญาณผิดปกติ', std_en:'Correct temp, no abnormal signal', freq:'3m'},
+    {id:'chillerdesc',th:'ล้างตะกรัน Chiller / ระบบน้ำหล่อเย็น', en:'Chiller Descaling', zh:'冷水机除垢', my:'Chiller အညစ် ဆေး', cat:'System', std_th:'ระบายน้ำ เติมสารต้านตะกรัน ตามคู่มือ',       std_en:'Drain, add descaling solution per manual', freq:'3m'},
+    {id:'rotpump', th:'ตรวจสอบ Rotary Pump / Diffusion Pump', en:'Rotary/Diffusion Pump Check', zh:'旋片泵扩散泵检查', my:'Rotary/Diffusion Pump', cat:'Pump', std_th:'ตรวจเสียง สั่น รั่ว | จัดค่า Vacuum',        std_en:'Check noise, vibration, leaks | Vacuum value', freq:'3m'},
+    {id:'gaschk',  th:'ตรวจสอบระบบ Gas Inlet (Ar, N2)',   en:'Gas System Check', zh:'进气系统检查', my:'Gas စနစ်စစ်', cat:'Gas', std_th:'ตรวจ Valve, Regulator, Flow meter ไม่รั่ว',  std_en:'Check valve, regulator, flowmeter - no leaks', freq:'3m'},
+    {id:'stockchk',th:'ตรวจนับ Stock อะไหล่ PVD ทั้งหมด', en:'Full Spare Parts Count', zh:'备件全面盘点', my:'Spare Parts စာရင်း', cat:'Stock', std_th:'เปรียบเทียบกับ min/max ใน Spare List',        std_en:'Compare with min/max in spare list', freq:'3m'},
+    {id:'calibrate',th:'สอบเทียบ (Calibrate) เครื่องมือวัด', en:'Instrument Calibration', zh:'仪器校准', my:'ကိရိယာ ကယ်လီဘရိတ်', cat:'Calibration', std_th:'Pressure gauge, Thermometer ± Spec',          std_en:'Pressure gauge, thermometer ± spec', freq:'3m'},
+  ],
+  '6m': [
+    {id:'beltrpl', th:'เปลี่ยนสายพาน (Belt) ปั๊มสุญญากาศ', en:'Vacuum Pump Belt Replacement', zh:'更换真空泵皮带', my:'Pump ခါးပတ် လဲ', cat:'Belt',  std_th:'เปลี่ยนทุก 6 เดือน หรือมีรอยแตก',           std_en:'Replace every 6M or when cracked', freq:'6m'},
+    {id:'oringrpl',th:'เปลี่ยน O-Ring ทั้งระบบ Full O-Ring & Seal Replacement', en:'Full O-Ring & Seal Replacement', zh:'全系统O型圈更换', my:'O-Ring အားလုံး လဲ', cat:'Seal', std_th:'เปลี่ยนตามอายุใช้งาน ไม่มีรอยรั่ว',        std_en:'Replace per service life, no leaks', freq:'6m'},
+    {id:'overhaul',th:'Overhaul ปั๊มสุญญากาศ',              en:'Vacuum Pump Overhaul', zh:'真空泵大修', my:'Vacuum Pump Overhaul', cat:'Pump',           std_th:'ถอด-ล้าง-ประกอบ ตรวจ Vane/Rotor',           std_en:'Disassemble-clean-reassemble, check vane/rotor', freq:'6m'},
+    {id:'diffpump',th:'ทำความสะอาดและตรวจสอบ Diffusion Pump', en:'Diffusion Pump Maintenance', zh:'扩散泵维护', my:'Diffusion Pump ထိန်းသိမ်း', cat:'Pump', std_th:'ตรวจระดับน้ำมัน Diffusion ไม่มี Contamination', std_en:'Check diff oil level, no contamination', freq:'6m'},
+    {id:'grounding',th:'ตรวจสอบระบบไฟฟ้า + Grounding',    en:'Electrical & Grounding Inspection', zh:'电气接地检查', my:'လျှပ်စစ် & Grounding', cat:'Electrical', std_th:'ค่า Resistance Grounding < 1 Ω',             std_en:'Grounding resistance < 1Ω', freq:'6m'},
+    {id:'heaterrpl',th:'ตรวจสอบ / เปลี่ยน Heater Element', en:'Heater Element Check/Replace', zh:'加热元件检查更换', my:'Heater Element လဲ', cat:'Heating', std_th:'ตรวจค่า Resistance ไม่มีรอยไหม้',           std_en:'Check resistance, no burn marks', freq:'6m'},
+    {id:'gaugecal',th:'สอบเทียบ Vacuum Gauge ทั้งหมด',     en:'Full Vacuum Gauge Calibration', zh:'真空表全面校准', my:'Vacuum Gauge ကယ်လီဘရိတ်', cat:'Calibration', std_th:'เทียบกับ Reference Gauge ± 5%',             std_en:'Compare with reference gauge ± 5%', freq:'6m'},
+    {id:'coolingflush',th:'ล้างทำความสะอาดระบบ Cooling Water', en:'Cooling System Full Flush', zh:'冷却系统全面冲洗', my:'Cooling ဆေးကြော', cat:'System', std_th:'เปลี่ยนน้ำ+สารกันตะกรัน ตรวจท่อรั่ว',         std_en:'Change water+scale inhibitor, check leaks', freq:'6m'},
+    {id:'safety',  th:'ตรวจสอบ Safety Interlock / Alarm System', en:'Safety Interlock Test', zh:'安全联锁报警测试', my:'Safety Interlock', cat:'Safety',   std_th:'ทดสอบ Alarm ทุกจุด ทำงานถูกต้อง',           std_en:'Test all alarm points, verify operation', freq:'6m'},
+    {id:'plc',     th:'PM ระบบ PLC / Controller',           en:'PLC & Controller PM', zh:'PLC控制器保养', my:'PLC PM', cat:'Control',                      std_th:'Backup Program ตรวจ Battery ทำความสะอาด',   std_en:'Backup program, check battery, clean', freq:'6m'},
+    {id:'cathode', th:'ตรวจสอบและเปลี่ยน Cathode / ARC Source', en:'Cathode / ARC Source Check', zh:'阴极ARC源检查', my:'Cathode / ARC Source', cat:'Material', std_th:'ตรวจการสึกกร่อน เปรียบ Target Thickness',  std_en:'Check erosion, compare target thickness', freq:'6m'},
+    {id:'condreport',th:'จัดทำรายงาน Condition Assessment / Machine Health Report', en:'Condition Assessment Report', zh:'设备状况评估报告', my:'Condition Assessment', cat:'Report', std_th:'สรุปสภาพเครื่อง แนวโน้ม เสนอแผน PM ถัดไป', std_en:'Summarize condition, trend, next PM plan', freq:'6m'},
+  ],
+};
+
+// Generate per-machine tasks
+// 1M: PVD1=day2, PVD3=day3, PVD4=day4, PVD5=day5
+// 3M: PVD1=day8, PVD3=day9, PVD4=day10, PVD5=day11  months=[1,4,7,10]
+// 6M: PVD1=day15, PVD3=day16, PVD4=day17, PVD5=day18  months=[1,7]
+const MACHINE_DAYS = {
+  '1m': {PVD1:3, PVD3:8, PVD4:13, PVD5:18},
+  '3m': {PVD1:10, PVD3:15, PVD4:20, PVD5:25},
+  '6m': {PVD1:20, PVD3:23, PVD4:26, PVD5:28},
+};
+const MACHINE_MONTHS = { '1m': null, '3m': [1,4,7,10], '6m': [1,7] };
+const MACHINE_COLORS = {PVD1:'#2563eb', PVD3:'#7c3aed', PVD4:'#db2777', PVD5:'#d97706'};
+
+const TASKS = [];
+['1m','3m','6m'].forEach(freq => {
+  TASK_TEMPLATES[freq].forEach(tmpl => {
+    MACHINES.forEach(m => {
+      // pvd4only = เฉพาะ PVD4
+      if (tmpl.pvd4only && m.id !== 'PVD4') return;
+      // pvd34only = PVD3 และ PVD4 เท่านั้น
+      if (tmpl.pvd34only && !['PVD3','PVD4'].includes(m.id)) return;
+      TASKS.push({
+        id: `${freq}-${tmpl.id}-${m.id.toLowerCase()}`,
+        machine: m.id,
+        machineColor: MACHINE_COLORS[m.id],
+        th: tmpl.th,
+        en: tmpl.en,
+        zh: tmpl.zh,
+        my: tmpl.my,
+        cat: tmpl.cat,
+        std_th: tmpl.std_th,
+        std_en: tmpl.std_en,
+        freq: freq,
+        months: MACHINE_MONTHS[freq],
+        day: MACHINE_DAYS[freq][m.id],
+        machines: [m.id],
+      });
+    });
+  });
+});
+
+
+const LOG = {};
+const CA_TASKS = {}; // { id: {id, taskId, taskName, detail, severity, status, createdAt, cy, cm} }
+let caCounter = 0;
+let cy=2026, cm=5, activeView='all', lang='th';
+
+// ── localStorage persistence ──────────────────────────────────────────
+const LS_KEYS = {
+  LOG: 'pvd_log_v2',
+  CA: 'pvd_ca_v2',
+  CUSTOM_TASKS: 'pvd_custom_tasks_v2',
+  LAST_REPLACED: 'pvd_last_replaced_v2',
+  CA_COUNTER: 'pvd_ca_counter_v2',
+};
+
+function lsSave() {
+  try {
+    // Convert media files to only save text/URL data, not full base64 (to avoid quota)
+    const logForSave = {};
+    Object.entries(LOG).forEach(([k, v]) => {
+      logForSave[k] = {
+        ...v,
+        media: (v.media || []).map(m => ({ type: m.type, dataUrl: m.dataUrl, name: m.name })),
+      };
+    });
+    localStorage.setItem(LS_KEYS.LOG, JSON.stringify(logForSave));
+    localStorage.setItem(LS_KEYS.CA, JSON.stringify(CA_TASKS));
+    localStorage.setItem(LS_KEYS.CUSTOM_TASKS, JSON.stringify(customTasks));
+    localStorage.setItem(LS_KEYS.LAST_REPLACED, JSON.stringify(LAST_REPLACED));
+    localStorage.setItem(LS_KEYS.CA_COUNTER, String(caCounter));
+  } catch(e) {
+    console.warn('localStorage save failed (quota?):', e);
+  }
+}
+
+function lsLoad() {
+  try {
+    const logData = localStorage.getItem(LS_KEYS.LOG);
+    if (logData) Object.assign(LOG, JSON.parse(logData));
+
+    const caData = localStorage.getItem(LS_KEYS.CA);
+    if (caData) Object.assign(CA_TASKS, JSON.parse(caData));
+
+    const ctData = localStorage.getItem(LS_KEYS.CUSTOM_TASKS);
+    if (ctData) customTasks = JSON.parse(ctData);
+
+    const lrData = localStorage.getItem(LS_KEYS.LAST_REPLACED);
+    if (lrData) Object.assign(LAST_REPLACED, JSON.parse(lrData));
+
+    const ccData = localStorage.getItem(LS_KEYS.CA_COUNTER);
+    if (ccData) caCounter = parseInt(ccData) || 0;
+  } catch(e) {
+    console.warn('localStorage load failed:', e);
+  }
+}
+
+function L(){ return LANG[lang]; }
+function tTask(t, field){ return t[field+'_'+lang] || t[field+'_en'] || ''; }
+
+// ===== SPARE PARTS MASTER DATA =====
+const SPARE_PARTS = [
+  {id:'sp-rg',   th:'ARC ROSEGOLD (PVD 4)',       en:'ARC ROSEGOLD Target', zh:'ARC玫瑰金靶材 (PVD 4)', my:'ARC ROSEGOLD (PVD 4)',        cat:'Consumable', intervalDays:90,  minStock:5,  maxStock:50, unit:'pcs'},
+  {id:'sp-tt4',  th:'ARC Ti Tin (PVD 4)',          en:'ARC Ti Tin Target PVD4', zh:'ARC钛锡靶材 PVD4', my:'ARC Ti Tin PVD4',     cat:'Consumable', intervalDays:90,  minStock:5,  maxStock:50, unit:'pcs'},
+  {id:'sp-tt3',  th:'ARC Ti Tin (PVD 3-5-1)',      en:'ARC Ti Tin Target 3-5-1', zh:'ARC钛锡靶材 3-5-1', my:'ARC Ti Tin 3-5-1',    cat:'Consumable', intervalDays:90,  minStock:5,  maxStock:50, unit:'pcs'},
+  {id:'sp-ah58', th:'ปั๊มลม 5x8 mm',               en:'Air Hose 5x8mm', zh:'气管 5x8mm', my:'လေပိုက် 5x8mm',             cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-ah46', th:'ปั๊มลม 4x6 mm',               en:'Air Hose 4x6mm', zh:'气管 4x6mm', my:'လေပိုက် 4x6mm',             cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-ah1216',th:'ปั๊มลม 12x16 mm',            en:'Air Hose 12x16mm', zh:'气管 12x16mm', my:'လေပိုက် 12x16mm',           cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-ah10', th:'ปั๊มลม 10x1mm',               en:'Air Hose 10x1mm', zh:'气管 10x1mm', my:'လေပိုက် 10x1mm',            cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-wh812',th:'ปั๊มน้ำ 8x12mm',              en:'Water Hose 8x12mm', zh:'水管 8x12mm', my:'ရေပိုက် 8x12mm',          cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-wh65', th:'ปั๊มน้ำ 6.5x10mm',            en:'Water Hose 6.5x10mm', zh:'水管 6.5x10mm', my:'ရေပိုက် 6.5x10mm',        cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-wh1216',th:'ปั๊มน้ำ 12x16mm',            en:'Water Hose 12x16mm', zh:'水管 12x16mm', my:'ရေပိုက် 12x16mm',         cat:'Hose',       intervalDays:90,  minStock:2,  maxStock:5,  unit:'ม้วน'},
+  {id:'sp-bulb', th:'หลอดไฟ PVD (ZJ-2T/Di5-5)',   en:'PVD Light Bulb', zh:'PVD灯管 (ZJ-2T/Di5-5)', my:'PVD မီးသီး (ZJ-2T/Di5-5)',             cat:'Electrical', intervalDays:90,  minStock:2,  maxStock:5,  unit:'pcs'},
+  {id:'sp-bando',th:'สายพาน BANDO',                en:'BANDO Belt', zh:'BANDO皮带', my:'BANDO ခါးပတ်',                 cat:'Belt',       intervalDays:180, minStock:2,  maxStock:5,  unit:'เส้น'},
+  {id:'sp-oring',th:'O-Ring Chamber Door',         en:'O-Ring Chamber Door', zh:'O型圈腔体门', my:'Chamber O-Ring',        cat:'Seal',       intervalDays:180, minStock:4,  maxStock:10, unit:'pcs'},
+  {id:'sp-oil',  th:'น้ำมันปั๊มสุญญากาศ',           en:'Vacuum Pump Oil', zh:'真空泵油', my:'Vacuum Pump ဆီ',            cat:'Oil',        intervalDays:90,  minStock:5,  maxStock:20, unit:'ลิตร'},
+  {id:'sp-inh',  th:'สารกันตะกรัน Cooling Water',  en:'Cooling Water Inhibitor', zh:'冷却水阻垢剂', my:'Cooling Water Inhibitor',    cat:'Chemical',   intervalDays:90,  minStock:2,  maxStock:10, unit:'ลิตร'},
+];
+
+// Last replaced date store (in-memory, user can update from dashboard)
+const LAST_REPLACED = {};
+
+function getSpareStatus(sp) {
+  const today = new Date();
+  const lastDate = LAST_REPLACED[sp.id] ? new Date(LAST_REPLACED[sp.id]) : null;
+  if (!lastDate) return {status:'unknown', daysLeft:null, pct:0};
+  const daysSince = Math.floor((today - lastDate) / 86400000);
+  const daysLeft = sp.intervalDays - daysSince;
+  const pct = Math.min(100, Math.round((daysSince / sp.intervalDays) * 100));
+  let status;
+  if (daysLeft < 0)       status = 'overdue';
+  else if (daysLeft <= 30) status = 'critical';
+  else if (daysLeft <= 60) status = 'warning';
+  else                     status = 'ok';
+  return {status, daysLeft, pct, daysSince};
+}
+
+function renderDashboard() {
+  renderTypeTabs();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const l = L();
+  const d = l.dash;
+  const m1 = cm + 1;
+
+  // Categorize tasks for current month
+  let taskOverdue=[], taskCritical=[], taskWarning=[], taskOk=[], taskDone=[];
+  const tf = typeFilter; // 'all' | '1m' | '3m' | '6m' | 'sp'
+  const pf = pvdFilter;  // 'all' | 'PVD1' | 'PVD3' | 'PVD4' | 'PVD5'
+  if (tf === 'all' || tf === '1m' || tf === '3m' || tf === '6m') {
+    TASKS.forEach(t => {
+      if (t.freq === 'sp') return;
+      if (tf !== 'all' && t.freq !== tf) return;
+      if (pf !== 'all' && t.machine !== pf) return; // PVD filter
+      if (t.months && !t.months.includes(m1)) return;
+      const rd = resolveDay(cy, cm, t.day);
+      const dueDate = new Date(cy, cm, rd);
+      dueDate.setHours(0,0,0,0);
+      const diff = Math.floor((dueDate - today) / 86400000);
+      const locale = lang==='th'?'th-TH':lang==='my'?'my-MM':lang==='zh'?'zh-CN':'en-GB';
+      const dueDateStr = dueDate.toLocaleDateString(locale);
+      const logK = logKey(t.id, cy, cm, rd);
+      const logged = LOG[logK];
+      if (logged) {
+        taskDone.push({t, diff, dueDateStr, logged});
+      } else {
+        const entry = {t, diff, dueDateStr};
+        if (diff < 0)        taskOverdue.push(entry);
+        else if (diff <= 30) taskCritical.push(entry);
+        else if (diff <= 60) taskWarning.push(entry);
+        else                 taskOk.push(entry);
+      }
+    });
+  }
+
+  // Spare parts removed from Dashboard — it's stock data, not a PM task (see Stock page if needed)
+  let spOverdue=[], spCritical=[], spWarning=[], spOk=[], spUnknown=[];
+
+  const overdueCount  = taskOverdue.length;
+  const criticalCount = taskCritical.length;
+  const warningCount  = taskWarning.length;
+  const okCount       = taskOk.length;
+
+
+  // Result summary counts from LOG
+  let okLog=0, ngLog=0, chgLog=0;
+  taskDone.forEach(({logged}) => {
+    if(logged.status==='OK') okLog++;
+    else if(logged.status==='NG') ngLog++;
+    else chgLog++;
+  });
+
+  // CA tasks count (open)
+  const openCA = Object.values(CA_TASKS).filter(c=>c.caStatus!=='done');
+
+  const monthLabel = `${l.monthsFull[cm]} ${cy}`;
+  const pvdLabel = pvdFilter !== 'all'
+    ? `<span style="margin-left:8px;background:${MACHINE_COLORS_MAP[pvdFilter]};color:#fff;font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;">${pvdFilter}</span>`
+    : '';
+  document.getElementById('dashCards').innerHTML = `
+    <div style="grid-column:1/-1;font-size:11px;color:var(--muted);margin-bottom:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      📅 ${d.showingMonth}: <strong style="color:var(--accent)">${monthLabel}</strong>${pvdLabel}
+    </div>
+    <div class="dash-card red" onclick="filterSpare('overdue')">
+      <div class="dash-card-icon">🔴</div>
+      <div class="dash-card-num red">${overdueCount}</div>
+      <div class="dash-card-label">${d.overdue}<br>Overdue</div>
+    </div>
+    <div class="dash-card orange" onclick="filterSpare('critical')">
+      <div class="dash-card-icon">🟠</div>
+      <div class="dash-card-num orange">${criticalCount}</div>
+      <div class="dash-card-label">${d.critical}</div>
+    </div>
+    <div class="dash-card yellow" onclick="filterSpare('warning')">
+      <div class="dash-card-icon">🟡</div>
+      <div class="dash-card-num yellow">${warningCount}</div>
+      <div class="dash-card-label">${d.warning}</div>
+    </div>
+    <div class="dash-card green" onclick="filterSpare('ok')">
+      <div class="dash-card-icon">🟢</div>
+      <div class="dash-card-num green">${okCount}</div>
+      <div class="dash-card-label">${d.normal}</div>
+    </div>
+  `;
+
+  window._dashData = { taskOverdue, taskCritical, taskWarning, taskOk, taskDone, spOverdue, spCritical, spWarning, spOk, spUnknown, okLog, ngLog, chgLog, openCA };
+  renderSpareList();
+}
+
+function renderSpareList() {
+  const l = L();
+  const d = l.dash;
+  const dd = window._dashData || {};
+  const { taskOverdue=[], taskCritical=[], taskWarning=[], taskOk=[], taskDone=[], spOverdue=[], spCritical=[], spWarning=[], spOk=[], spUnknown=[], okLog=0, ngLog=0, chgLog=0, openCA=[] } = dd;
+  const f = activeFilter;
+  const showAll = f === 'all';
+  let html = '';
+
+  // === Result Summary bar ===
+  if (taskDone.length > 0) {
+    html += `<div class="result-summary">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);margin-right:4px;">${d.resultSummary}:</span>
+      <span class="result-chip" style="color:var(--ok)">${(d.okCount)(okLog)}</span>
+      <span class="result-chip" style="color:var(--ng)">${(d.ngCount)(ngLog)}</span>
+      <span class="result-chip" style="color:var(--chg)">${(d.chgCount)(chgLog)}</span>
+    </div>`;
+  }
+
+  // === CA Tasks (open) ===
+  const caL = l.ca||{};
+  if (openCA.length > 0) {
+    html += `<div class="dash-section-title">${d.caSection} (${openCA.length})</div>`;
+    openCA.forEach(ca => {
+      const sevMap = {low:'🟡',med:'🟠',high:'🔴',crit:'⛔'};
+      const statusClass = ca.caStatus==='pending'?'ca-status-pending':ca.caStatus==='inprog'?'ca-status-inprog':'ca-status-done';
+      const statusLabel = ca.caStatus==='pending'?(caL.pending):ca.caStatus==='inprog'?(caL.inprog):(caL.done||'✅ ปิดงาน');
+      html += `<div class="ca-row">
+        <div class="ca-dot"></div>
+        <div class="ca-info">
+          <div class="ca-name">${ca.taskName}</div>
+          <div class="ca-detail">⚠️ ${ca.detail} ${sevMap[ca.severity]||''}</div>
+          <div class="ca-detail">${caL.createdAt}: ${ca.createdAt}</div>
+          <select class="ca-status-sel ${statusClass}" onchange="updateCAStatus('${ca.id}',this.value)">
+            <option value="pending" ${ca.caStatus==='pending'?'selected':''}>${caL.pending}</option>
+            <option value="inprog" ${ca.caStatus==='inprog'?'selected':''}>${caL.inprog}</option>
+            <option value="done" ${ca.caStatus==='done'?'selected':''}>${caL.done}</option>
+          </select>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Helper to render tasks grouped by PVD (when pvdFilter='all' and showAll)
+  function renderTaskSection(tasks, colorCls, title) {
+    if (!tasks.length) return '';
+    let out = '';
+    if (pvdFilter === 'all' && showAll) {
+      // Group by machine
+      const machines = ['PVD1','PVD3','PVD4','PVD5'];
+      const grouped = {};
+      tasks.forEach(entry => {
+        const m = entry.t.machine || 'Other';
+        if (!grouped[m]) grouped[m] = [];
+        grouped[m].push(entry);
+      });
+      out += `<div class="dash-section-title">${title} (${tasks.length})</div>`;
+      machines.forEach(m => {
+        if (!grouped[m]?.length) return;
+        const mc = MACHINE_COLORS_MAP[m] || '#64748b';
+        out += `<div style="display:flex;align-items:center;gap:6px;margin:10px 0 4px;padding:4px 0;border-bottom:1px dashed var(--border);">
+          <span style="background:${mc};color:#fff;font-size:9px;font-weight:800;padding:2px 10px;border-radius:10px;">${m}</span>
+          <span style="font-size:10px;color:var(--muted);font-weight:600;">${grouped[m].length} items</span>
+          <button onclick="goCalendarPvd('${m}')" style="margin-left:auto;font-size:9px;padding:2px 8px;border-radius:8px;border:1px solid ${mc};color:${mc};background:transparent;cursor:pointer;font-weight:700;">📅 ${L().ui.calendar||'Calendar'}</button>
+        </div>`;
+        grouped[m].forEach(({t,diff,dueDateStr}) => { out += taskRowHTML(t,diff,dueDateStr,colorCls,d); });
+      });
+    } else {
+      out += `<div class="dash-section-title">${title} (${tasks.length})</div>`;
+      tasks.forEach(({t,diff,dueDateStr})=>{ out+=taskRowHTML(t,diff,dueDateStr,colorCls,d); });
+    }
+    return out;
+  }
+
+  // === Overdue ===
+  if (showAll || f === 'overdue') {
+    html += renderTaskSection(taskOverdue, 'red', d.taskSecOverdue);
+    if (spOverdue.length) {
+      html += `<div class="dash-section-title">${d.secOverdue} (${spOverdue.length})</div>`;
+      spOverdue.forEach(({sp,s})=>{ html+=spareRowHTML(sp,s,d); });
+    }
+  }
+
+  // === Critical ===
+  if (showAll || f === 'critical') {
+    html += renderTaskSection(taskCritical, 'orange', d.taskSecCritical);
+    if (spCritical.length) {
+      html += `<div class="dash-section-title">${d.secCritical} (${spCritical.length})</div>`;
+      spCritical.forEach(({sp,s})=>{ html+=spareRowHTML(sp,s,d); });
+    }
+  }
+
+  // === Warning ===
+  if (showAll || f === 'warning') {
+    html += renderTaskSection(taskWarning, 'yellow', d.taskSecWarning);
+    if (spWarning.length) {
+      html += `<div class="dash-section-title">${d.secWarning} (${spWarning.length})</div>`;
+      spWarning.forEach(({sp,s})=>{ html+=spareRowHTML(sp,s,d); });
+    }
+  }
+
+  // === Normal / OK ===
+  if (showAll || f === 'ok') {
+    html += renderTaskSection(taskOk, 'green', d.taskSecOk);
+    if (spOk.length) {
+      html += `<div class="dash-section-title">${d.secOk} (${spOk.length})</div>`;
+      spOk.forEach(({sp,s})=>{ html+=spareRowHTML(sp,s,d); });
+    }
+  }
+
+  // === Unknown spare parts (no LAST_REPLACED date yet) ===
+  if (spUnknown.length && (showAll || f === 'ok' || f === 'unknown')) {
+    html += `<div class="dash-section-title">${d.secUnknown} (${spUnknown.length})</div>`;
+    spUnknown.forEach(({sp,s})=>{ html+=spareRowHTML(sp,s,d); });
+  }
+
+  // === Done (logged) tasks ===
+  if ((showAll || f==='ok') && taskDone.length) {
+    html += `<div class="dash-section-title">${d.doneSection} (${taskDone.length})</div>`;
+    taskDone.forEach(({t,logged,dueDateStr})=>{
+      const badgeCls=logged.status==='OK'?'badge-ok':logged.status==='NG'?'badge-ng':'badge-chg';
+      const sevLabel=logged.severity?{low:'🟡',med:'🟠',high:'🔴',crit:'⛔'}[logged.severity]||'':'';
+      html+=`<div class="done-task-row">
+        <span style="font-size:14px">✅</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+            <span style="background:${t.machineColor||'#64748b'};color:#fff;font-size:9px;font-weight:800;padding:1px 8px;border-radius:10px;">${t.machine||''}</span>
+          </div>
+          <div style="font-size:12px;font-weight:600">${t[lang]||t.th}</div>
+          <div style="font-size:10px;color:var(--muted)">${t.en} · ${d.taskDue(dueDateStr)}</div>
+          ${logged.abDetail?`<div style="font-size:10px;color:var(--ng)">⚠️ ${logged.abDetail}</div>`:''}
+        </div>
+        <span class="spare-badge ${badgeCls}">${logged.status}${sevLabel?' '+sevLabel:''}</span>
+      </div>`;
+    });
+  }
+
+  if (!html) html = `<div class="notask">${d.noItems}</div>`;
+  document.getElementById('spareList').innerHTML = html;
+
+  // Bind spare update buttons
+  SPARE_PARTS.forEach(sp => {
+    document.getElementById(`upd-${sp.id}`)?.addEventListener('click', e => {
+      e.stopPropagation();
+      const dateVal = prompt(d.updatePrompt(sp[lang] || sp.th));
+      if (dateVal && !isNaN(new Date(dateVal))) {
+        LAST_REPLACED[sp.id] = dateVal;
+        lsSave();
+        renderDashboard();
+        showToast(d.toastUpdate);
+      }
+    });
+  });
+}
+
+function taskRowHTML(t, diff, dueDateStr, colorCls, d) {
+  const dotMap = {red:'dot-red', orange:'dot-orange', yellow:'dot-yellow', green:'dot-green'};
+  const badgeMap = {red:'badge-red', orange:'badge-orange', yellow:'badge-yellow', green:'badge-green'};
+  const freqMap = {m1:'1M', m3:'3M', m6:'6M', sp:'SP'};
+  const name = t[lang] || t.th;
+  const isOverdue = diff < 0;
+  const badgeText = isOverdue ? d.taskOverdueDays(Math.abs(diff)) : diff === 0 ? '🔔 Today' : d.taskDaysLeft(diff);
+  const overdueRemark = isOverdue ? `<div class="overdue-remark">⚠️ ${d.overdueRemark}</div>` : '';
+  const rowClass = isOverdue ? 'spare-row row-overdue task-clickable' : 'spare-row task-clickable';
+  // Parse due date to navigate to calendar
+  let calLink = '';
+  if (dueDateStr) {
+    const parts = dueDateStr.split('/');
+    if (parts.length === 3) {
+      const [dd2, mm2, yyyy2] = parts.map(Number);
+      const y2 = yyyy2 > 2400 ? yyyy2-543 : yyyy2;
+      calLink = `onclick="goToCalendarTask('${t.id}',${y2},${mm2-1},${dd2})" style="cursor:pointer;"`;
+    }
+  }
+  return `<div class="${rowClass}" ${calLink} title="${d.calHint||''}">
+    <div class="spare-status-dot ${dotMap[colorCls]}"></div>
+    <div class="spare-name">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+        <span style="background:${t.machineColor||'#64748b'};color:#fff;font-size:9px;font-weight:800;padding:1px 8px;border-radius:10px;">${t.machine||''}</span>
+        <span style="font-size:9px;color:var(--muted);">${t.cat}</span>
+      </div>
+      <div class="spare-name-th">${name}</div>
+      <div class="spare-name-en">${t.en} · ${freqMap[t.freq] || t.freq}</div>
+      ${overdueRemark}
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <span class="spare-badge ${badgeMap[colorCls]}">${badgeText}</span>
+      <div class="spare-days">${d.taskDue(dueDateStr)}</div>
+      <div style="font-size:9px;color:var(--accent);margin-top:3px;opacity:.7;">📅</div>
+    </div>
+  </div>`;
+}
+
+function spareRowHTML(sp, s, d) {
+  if (!d) d = L().dash;
+  const dotCls = s.status==='overdue'?'dot-red':s.status==='critical'?'dot-orange':s.status==='warning'?'dot-yellow':s.status==='ok'?'dot-green':'';
+  const badgeCls = s.status==='overdue'?'badge-red':s.status==='critical'?'badge-orange':s.status==='warning'?'badge-yellow':s.status==='ok'?'badge-green':'';
+  const badgeText = s.status==='overdue' ? d.badgeOverdue(s.daysLeft)
+    : s.status==='ok'||s.status==='critical'||s.status==='warning' ? d.badgeDaysLeft(s.daysLeft)
+    : d.badgeUnknown;
+  const lastDate = LAST_REPLACED[sp.id] ? `${d.lastReplaced}: ${LAST_REPLACED[sp.id]}` : d.noData;
+  const pctBar = s.pct > 0 ? `<div class="progress-bar"><div class="progress-fill" style="width:${s.pct}%;background:${s.status==='overdue'?'#dc2626':s.status==='critical'?'#ea580c':s.status==='warning'?'#ca8a04':'#16a34a'}"></div></div>` : '';
+  const spName = sp[lang] || sp.th;
+  const isOverdue = s.status === 'overdue';
+  const rowClass = isOverdue ? 'spare-row row-overdue' : 'spare-row';
+  const overdueRemark = isOverdue ? `<div class="overdue-remark">⚠️ ${d.overdueRemark}</div>` : '';
+  return `<div class="${rowClass}">
+    <div class="spare-status-dot ${dotCls}"></div>
+    <div class="spare-name">
+      <div class="spare-name-th">${spName}</div>
+      <div class="spare-name-en">${sp.en} · ${sp.cat} · ${d.everyDays(sp.intervalDays)}</div>
+      ${pctBar}
+      ${overdueRemark}
+    </div>
+    <div style="text-align:right;">
+      <span class="spare-badge ${badgeCls}">${badgeText}</span>
+      <div class="spare-days">${lastDate}</div>
+      <button id="upd-${sp.id}" style="margin-top:4px;font-size:9px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;">${d.updateBtn}</button>
+    </div>
+  </div>`;
+}
+
+function scrollToSection(id) {
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+let activeFilter = 'all';
+let typeFilter = 'all'; // 'all' | '1m' | '3m' | '6m' | 'sp'
+let pvdFilter = 'all';  // 'all' | 'PVD1' | 'PVD3' | 'PVD4' | 'PVD5'
+let calPvdFilter = 'all'; // sync to calendar
+
+const MACHINE_COLORS_MAP = {PVD1:'#2563eb',PVD3:'#7c3aed',PVD4:'#db2777',PVD5:'#d97706'};
+
+function togglePvdDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('dashFreqDropdown')?.classList.remove('open');
+  document.getElementById('pvdDropdown').classList.toggle('open');
+}
+document.addEventListener('click', () => {
+  document.getElementById('pvdDropdown')?.classList.remove('open');
+  document.getElementById('dashFreqDropdown')?.classList.remove('open');
+  document.getElementById('calPvdDropdown')?.classList.remove('open');
+  document.getElementById('calFreqDropdown')?.classList.remove('open');
+});
+
+function setPvdFilter(pvd) {
+  pvdFilter = pvd;
+  calPvdFilter = pvd; // sync to calendar
+  // Update dropdown UI
+  document.querySelectorAll('.pvd-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.pvd === pvd);
+    const check = document.getElementById('pvdCheck-' + el.dataset.pvd);
+    if (check) check.style.display = el.dataset.pvd === pvd ? '' : 'none';
+  });
+  // Update button label
+  const btn = document.getElementById('pvdFilterBtn');
+  const label = document.getElementById('pvdFilterLabel');
+  if (pvd === 'all') {
+    label.textContent = L().ui.machine;
+    btn.classList.remove('has-filter');
+  } else {
+    label.textContent = pvd;
+    btn.classList.add('has-filter');
+  }
+  document.getElementById('pvdDropdown').classList.remove('open');
+  activeFilter = 'all';
+  document.querySelectorAll('.dash-card').forEach(c => c.style.opacity = '1');
+  renderDashboard();
+}
+
+function setTypeFilter(t) {
+  typeFilter = t;
+  activeFilter = 'all';
+  document.querySelectorAll('.dash-card').forEach(c => c.style.opacity = '1');
+  document.getElementById('dashFreqDropdown')?.classList.remove('open');
+  updateDashFreqDropdown();
+  renderDashboard();
+}
+function updateDashFreqDropdown() {
+  const l = L();
+  const labels = { all: l.all, '1m': '1M', '3m': '3M', '6m': '6M' };
+  document.querySelectorAll('[data-dtype]').forEach(el => {
+    el.classList.toggle('selected', el.dataset.dtype === typeFilter);
+    const check = document.getElementById('dashFreqCheck-' + el.dataset.dtype);
+    if (check) check.style.display = el.dataset.dtype === typeFilter ? '' : 'none';
+  });
+  const label = document.getElementById('dashFreqFilterLabel');
+  const btn = document.getElementById('dashFreqFilterBtn');
+  if (label) label.textContent = labels[typeFilter] || typeFilter;
+  if (btn) btn.classList.toggle('has-filter', typeFilter !== 'all');
+}
+function toggleDashFreqDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('pvdDropdown')?.classList.remove('open');
+  document.getElementById('dashFreqDropdown').classList.toggle('open');
+}
+function renderTypeTabs() { updateDashFreqDropdown(); }
+function filterSpare(filter) {
+  activeFilter = activeFilter === filter ? 'all' : filter;
+  // highlight active card
+  document.querySelectorAll('.dash-card').forEach(c => c.style.opacity = '0.5');
+  if (activeFilter !== 'all') {
+    const idx = ['overdue','critical','warning','ok'].indexOf(filter);
+    const cards = document.querySelectorAll('.dash-card');
+    if (cards[idx]) cards[idx].style.opacity = '1';
+  } else {
+    document.querySelectorAll('.dash-card').forEach(c => c.style.opacity = '1');
+  }
+  renderSpareList();
+}
+
+function goCalendarPvd(pvd) {
+  calPvdFilter = pvd;
+  showPage('calendar');
+  updateCalPvdDropdown();
+}
+
+function updateCalPvdDropdown() {
+  const pvd = calPvdFilter;
+  document.querySelectorAll('[data-cpvd]').forEach(el => {
+    el.classList.toggle('selected', el.dataset.cpvd === pvd);
+    const check = document.getElementById('calPvdCheck-' + el.dataset.cpvd);
+    if (check) check.style.display = el.dataset.cpvd === pvd ? '' : 'none';
+  });
+  const label = document.getElementById('calPvdFilterLabel');
+  const btn = document.getElementById('calPvdFilterBtn');
+  if (label) label.textContent = pvd === 'all' ? (L().ui.machine) : pvd;
+  if (btn) btn.classList.toggle('has-filter', pvd !== 'all');
+}
+
+function toggleCalPvdDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('calFreqDropdown')?.classList.remove('open');
+  document.getElementById('calPvdDropdown').classList.toggle('open');
+}
+
+function toggleCalFreqDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('calPvdDropdown')?.classList.remove('open');
+  document.getElementById('calFreqDropdown').classList.toggle('open');
+}
+
+function updateCalFreqDropdown() {
+  const freq = activeView;
+  const freqLabels = { all: L().all, '1m': '1M', '3m': '3M', '6m': '6M' };
+  document.querySelectorAll('[data-cfreq]').forEach(el => {
+    el.classList.toggle('selected', el.dataset.cfreq === freq);
+    const check = document.getElementById('calFreqCheck-' + el.dataset.cfreq);
+    if (check) check.style.display = el.dataset.cfreq === freq ? '' : 'none';
+  });
+  const label = document.getElementById('calFreqFilterLabel');
+  const btn = document.getElementById('calFreqFilterBtn');
+  if (label) label.textContent = freqLabels[freq] || freq;
+  if (btn) btn.classList.toggle('has-filter', freq !== 'all');
+}
+
+function setCalFreqFilter(freq) {
+  activeView = freq;
+  updateCalFreqDropdown();
+  document.getElementById('calFreqDropdown').classList.remove('open');
+  render();
+}
+
+function setCalPvdFilter(pvd) {
+  calPvdFilter = pvd;
+  pvdFilter = pvd;
+  updateCalPvdDropdown();
+  render();
+}
+
+function setCalPvdFilter2(pvd) {
+  calPvdFilter = pvd;
+  pvdFilter = pvd;
+  updateCalPvdDropdown();
+  document.getElementById('calPvdDropdown').classList.remove('open');
+  render();
+}
+
+function goToCalendarTask(taskId, year, month0, day) {
+  cy = year;
+  cm = month0;
+  showPage('calendar');
+  setTimeout(() => openModal(day), 80);
+}
+
+function showPage(page) {
+  document.getElementById('pageDashboard').style.display = page==='dashboard' ? 'block' : 'none';
+  document.getElementById('pageCalendar').style.display  = page==='calendar'  ? 'block' : 'none';
+  document.getElementById('pageAdmin').style.display     = page==='admin'     ? 'block' : 'none';
+  document.getElementById('btnDash').classList.toggle('active', page==='dashboard');
+  document.getElementById('btnCal').classList.toggle('active',  page==='calendar');
+  if (page==='dashboard') renderDashboard();
+  if (page==='calendar')  { updateCalFreqDropdown(); updateCalPvdDropdown(); render(); }
+  if (page==='admin')     renderAdmin();
+}
+
+// Navigate from Dashboard task → Calendar month + open modal for that day
+function goToCalendarTask(taskId, year, month0, day) {
+  cy = year;
+  cm = month0;
+  // ไม่เปลี่ยน calPvdFilter — คงค่าเดิมไว้
+  showPage('calendar');
+  setTimeout(() => openModal(day), 80);
+}
+
+function renderCalPvdBar() { updateCalPvdDropdown(); }
+
+let isDark = false;
+function toggleTheme(){
+  isDark = !isDark;
+  document.body.classList.toggle('dark', isDark);
+  document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+}
+
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', (b.getAttribute('onclick')||'').includes("'"+l+"'")));
+  document.getElementById('hTitle').textContent=L().title;
+  document.getElementById('hSub').textContent=L().sub;
+  const exportBtn = document.getElementById('exportBtn');
+  if (exportBtn) exportBtn.textContent=L().export;
+  // freq dropdown label updated via updateCalFreqDropdown()
+  // Update page nav buttons
+  document.getElementById('btnDash').textContent=L().ui.dashboard;
+  document.getElementById('btnCal').textContent=L().ui.calendar;
+  // Update PVD filter label if not filtered
+  const pvdLabel = document.getElementById('pvdFilterLabel');
+  if (pvdLabel && pvdFilter === 'all') pvdLabel.textContent = L().ui.machine;
+  // Update PVD dropdown title
+  const pvdDropTitle = document.getElementById('pvdDropdownTitle');
+  if (pvdDropTitle) pvdDropTitle.textContent = L().ui.selectMachine;
+  // Update "all" option in dropdown
+  const allOptLabel = document.getElementById('pvdAllLabel');
+  if (allOptLabel) allOptLabel.textContent = L().ui.allMachines;
+  // Update admin header
+  const adminPageTitle = document.getElementById('adminPageTitle');
+  if (adminPageTitle) adminPageTitle.textContent = L().ui.adminTitle;
+  const adminCloseBtn = document.getElementById('adminCloseBtn');
+  if (adminCloseBtn) adminCloseBtn.textContent = L().ui.adminClose;
+  // Update filter all-labels on lang change
+  var dfl=document.getElementById('dashFreqFilterLabel'); if(dfl&&typeFilter==='all') dfl.textContent=L().all;
+  var dfa=document.getElementById('dashFreqLabel-all'); if(dfa) dfa.textContent=L().all;
+  var cfl=document.getElementById('calFreqFilterLabel'); if(cfl&&activeView==='all') cfl.textContent=L().all;
+  var cfa=document.getElementById('calFreqLabel-all'); if(cfa) cfa.textContent=L().all;
+  var cpl=document.getElementById('calPvdFilterLabel'); if(cpl&&calPvdFilter==='all') cpl.textContent=L().ui.machine;
+    const onDash = document.getElementById('pageDashboard').style.display !== 'none';
+  updateMonthLabel();
+  if (onDash) renderDashboard();
+  else { renderCalPvdBar(); render(); }
+}
+
+function logKey(id,y,m0,d){ return `${id}__${y}-${String(m0+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function resolveDay(y,m0,d){
+  const dim=new Date(y,m0+1,0).getDate();
+  let day=Math.min(d,dim);
+  if(new Date(y,m0,day).getDay()===0) day=Math.min(day+1,dim);
+  return day;
+}
+
+function getTasksForDate(y,m0,day){
+  const m1=m0+1;
+  const allTasks=[...TASKS,...(typeof customTasks!=='undefined'?customTasks:[])];
+  return allTasks.filter(t=>{
+    if(t.months&&!t.months.includes(m1)) return false;
+    if(t.fixedY!==undefined && t.fixedM!==undefined) return t.fixedY===y && t.fixedM===m0 && t.day===day;
+    return resolveDay(y,m0,t.day)===day;
+  });
+}
+
+function getAllTaskDays(y,m0){
+  const map={};const m1=m0+1;
+  const allTasks=[...TASKS,...(typeof customTasks!=='undefined'?customTasks:[])];
+  allTasks.forEach(t=>{
+    if(t.months&&!t.months.includes(m1)) return;
+    const rd=resolveDay(y,m0,t.day);
+    if(!map[rd]) map[rd]=[];
+    map[rd].push(t);
+  });
+  return map;
+}
+
+function barClass(tasks){
+  const f=[...new Set(tasks.map(t=>t.freq))];
+  if(f.length>1) return 'bar-mix';
+  return 'bar-'+f[0];
+}
+
+function isDone(t,y,m0,d){ const k=logKey(t.id,y,m0,d); return LOG[k]&&LOG[k].status; }
+
+function updateMonthLabel() {
+  const l = L();
+  document.getElementById('monthLabel').textContent = `${l.months[cm]} ${cy}`;
+}
+
+function render(){
+  const l=L();
+  updateMonthLabel();
+  const taskMap=getAllTaskDays(cy,cm);
+  const fd=new Date(cy,cm,1).getDay(), dim=new Date(cy,cm+1,0).getDate(), tod=new Date();
+  const g=document.getElementById('calGrid');
+  let html=l.days.map(d=>`<div class="cal-dh">${d}</div>`).join('');
+  for(let i=0;i<fd;i++) html+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const dow=new Date(cy,cm,d).getDay();
+    const isSun=dow===0;
+    const allTasks=(taskMap[d]||[]).filter(t=>(activeView==='all'||t.freq===activeView)&&(calPvdFilter==='all'||t.machine===calPvdFilter));
+    const isToday=d===tod.getDate()&&cm===tod.getMonth()&&cy===tod.getFullYear();
+    const hasTasks=allTasks.length>0;
+    const bc=hasTasks?barClass(allTasks):'';
+    const doneCount=allTasks.filter(t=>isDone(t,cy,cm,d)).length;
+    const today0=new Date(); today0.setHours(0,0,0,0);
+    const cellDate=new Date(cy,cm,d); cellDate.setHours(0,0,0,0);
+    const hasOverdue=!isSun&&hasTasks&&cellDate<today0&&allTasks.some(t=>!isDone(t,cy,cm,d));
+    // Show PVD color dots when viewing all machines
+    const pvdDots = calPvdFilter==='all' ? (()=>{
+      const ms=[...new Set(allTasks.map(t=>t.machine).filter(Boolean))];
+      if(ms.length===0) return '';
+      return `<div class="cal-pvd-row">${ms.map(m=>`<span class="cal-pvd-dot" style="background:${MACHINE_COLORS_MAP[m]||'#64748b'}" title="${m}"></span>`).join('')}</div>`;
+    })() : '';
+    const pills=allTasks.slice(0,2).map(t=>{
+      const isOvd=!isDone(t,cy,cm,d)&&cellDate<today0;
+      return `<div class="task-pill ${isOvd?'pill-overdue':'pill-'+t.freq}" style="border-left:3px solid ${isOvd?'#dc2626':(t.machineColor||'#64748b')}">${t.machine?t.machine+' ':''}${(t[lang]||t.en).split(' ').slice(0,2).join(' ')}</div>`;
+    }).join('');
+    const more=allTasks.length>2?`<div class="more">+${allTasks.length-2}</div>`:'';
+    const doneDot=doneCount>0?`<span class="done-dot"></span>`:'';
+    const onclick=isSun?'':`onclick="openModal(${d})"`;
+    html+=`<div class="cal-cell${isToday?' today':''}${isSun?' sunday':''}${hasTasks?' has-task '+bc:''}${hasOverdue?' has-overdue':''}" ${onclick}>
+      <div class="day-num">${doneDot}${d}${isSun?` <span style="font-size:8px;color:var(--ng)">${l.sunday}</span>`:''}</div>
+      ${isSun?'':(pvdDots+pills+more)}
+    </div>`;
+  }
+  g.innerHTML=html;
+}
+
+const editingTask={};
+
+function openModal(day){
+  const tasks=getTasksForDate(cy,cm,day).filter(t=>(activeView==='all'||t.freq===activeView)&&(calPvdFilter==='all'||t.machine===calPvdFilter));
+  const dobj=new Date(cy,cm,day);
+  const l=L();
+  document.getElementById('mdate').textContent=`${day} ${l.months[cm]} ${cy}`;
+  document.getElementById('mdatesub').textContent=`${l.weekdays[dobj.getDay()]} · ${l.monthsFull[cm]} ${cy}`;
+
+  // ── แสดง loading spinner ขณะ sync ──
+  document.getElementById('mbody').innerHTML=`<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px;">🔄 Loading...</div>`;
+  document.getElementById('overlay').classList.add('open');
+
+  // ── Auto-sync จาก Google Sheets ทุกครั้งที่เปิด modal ──
+  if (window.GStorage && GStorage.isSignedIn()) {
+    GStorage.loadAllLogs().then(logs => {
+      Object.assign(LOG, logs);
+      lsSave();
+      _renderModalContent(day, tasks, l);
+    }).catch(() => _renderModalContent(day, tasks, l));
+    return;
+  }
+  _renderModalContent(day, tasks, l);
+}
+
+function _renderModalContent(day, tasks, l){
+  // Quick-add button (always visible)
+  const adminBtn = `<button onclick="toggleQuickAdd(${day})" id="quickAddBtn" style="margin-top:12px;padding:7px 14px;border-radius:10px;border:1.5px dashed var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;width:100%;">${l.ui.quickAddBtn}</button>`;
+
+  if(!tasks.length){
+    document.getElementById('mbody').innerHTML=`<div class="notask">${l.notask}</div>${adminBtn}<div id="quickAddForm"></div>`;
+  } else {
+    const groups=[
+      {key:'1m',label:l.freqLabel.m1,dc:'c1m'},
+      {key:'3m',label:l.freqLabel.m3,dc:'c3m'},
+      {key:'6m',label:l.freqLabel.m6,dc:'c6m'},
+    ];
+    let html='';
+    groups.forEach(g=>{
+      const gt=tasks.filter(t=>t.freq===g.key);
+      if(!gt.length) return;
+      html+=`<div class="sl">${g.label} (${gt.length})</div>`;
+      gt.forEach(t=>{
+        const k=logKey(t.id,cy,cm,day);
+        const saved=LOG[k];
+        html+=renderTaskCard(t,g.dc,saved,day);
+      });
+    });
+    html += adminBtn + '<div id="quickAddForm"></div>';
+    document.getElementById('mbody').innerHTML=html;
+    tasks.forEach(t=>{
+      const k=logKey(t.id,cy,cm,day);
+      if(!LOG[k]) bindCardEvents(t,day);
+      else document.getElementById(`edit-${t.id}`)?.addEventListener('click',()=>enterEditMode(t,day));
+      document.querySelectorAll(`[data-lb]`).forEach(el=>el.addEventListener('click',()=>openLightbox(el.dataset.lb,el.dataset.lbtype)));
+    });
+  }
+}
+
+// Mini calendar state for quick-add
+let qaPickerY = null, qaPickerM = null, qaPickedDay = null;
+
+function toggleQuickAdd(modalDay) {
+  const container = document.getElementById('quickAddForm');
+  if (!container) return;
+  if (container.innerHTML) { container.innerHTML=''; return; }
+
+  // ถ้ายังไม่ได้ login admin ให้ถาม PIN ก่อน
+  if (!adminUnlocked) {
+    const ui = L().ui;
+    container.innerHTML = `
+      <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:12px;border:1.5px solid var(--accent);text-align:center;">
+        <div style="font-size:20px;margin-bottom:6px;">🔒</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:10px;">${ui.requireLogin}</div>
+        <input id="qa-pin" type="password" maxlength="6" placeholder="PIN" autofocus
+          style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;letter-spacing:6px;text-align:center;width:120px;">
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+          <button onclick="checkQuickAddPin()" style="padding:7px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">${ui.pinLogin}</button>
+          <button onclick="document.getElementById('quickAddForm').innerHTML=''" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;">${ui.pinCancel}</button>
+        </div>
+        <div id="qa-pin-err" style="color:var(--ng);font-size:11px;margin-top:6px;display:none;">${ui.pinWrong}</div>
+      </div>`;
+    document.getElementById('qa-pin').addEventListener('keydown', e => { if(e.key==='Enter') checkQuickAddPin(); });
+    return;
+  }
+
+  // Login แล้ว → เปิด form ได้เลย
+  qaPickerY = cy; qaPickerM = cm; qaPickedDay = null;
+  qaSessionIds = []; // reset session
+  renderQuickAddForm(container);
+}
+
+function checkQuickAddPin() {
+  const pin = document.getElementById('qa-pin')?.value;
+  if (pin === ADMIN_PIN) {
+    adminUnlocked = true;
+    const container = document.getElementById('quickAddForm');
+    if (!container) return;
+    qaPickerY = cy; qaPickerM = cm; qaPickedDay = null;
+    renderQuickAddForm(container);
+  } else {
+    document.getElementById('qa-pin-err').style.display = 'block';
+    document.getElementById('qa-pin').value = '';
+    document.getElementById('qa-pin').focus();
+  }
+}
+
+function renderQuickAddForm(container) {
+  const mColors = {PVD1:'#2563eb',PVD3:'#7c3aed',PVD4:'#db2777',PVD5:'#d97706'};
+  const l = L();
+  const ui = l.ui;
+  container.innerHTML = `
+    <div style="margin-top:12px;padding:14px;background:var(--surface2);border-radius:12px;border:1.5px solid var(--accent);">
+      <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:10px;">${ui.quickAddTitle}</div>
+
+      <div id="qa-added-list"></div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <input id="qa-th" placeholder="${ui.qaThPlaceholder}" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;">
+        <input id="qa-en" placeholder="${ui.qaEnPlaceholder}" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;">
+        <div style="display:flex;gap:8px;">
+          <input id="qa-cat" placeholder="${ui.qaCatPlaceholder}" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;">
+          <select id="qa-freq" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;">
+            <option value="1m">${ui.qaFreq1m}</option>
+            <option value="3m">${ui.qaFreq3m}</option>
+            <option value="6m">${ui.qaFreq6m}</option>
+          </select>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px;">${ui.qaMachine}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${['PVD1','PVD3','PVD4','PVD5'].map(m=>`
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <input type="checkbox" id="qa-${m}" checked>
+              <span style="background:${mColors[m]};color:#fff;font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;">${m}</span>
+            </label>`).join('')}
+        </div>
+        <input id="qa-std" placeholder="${ui.qaStdPlaceholder}" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-family:inherit;">
+
+        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px;">${ui.qaPickDate}</div>
+        <div id="qa-mini-cal" style="background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:10px;">
+          ${renderMiniCal()}
+        </div>
+        <div id="qa-day-display" style="font-size:11px;font-weight:700;color:var(--accent);text-align:center;min-height:18px;"></div>
+
+        <div style="display:flex;gap:8px;">
+          <button onclick="saveQuickTask(true)" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:800;cursor:pointer;">${ui.qaSaveMore}</button>
+          <button onclick="saveQuickTask(false)" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:800;cursor:pointer;">${ui.qaSaveClose}</button>
+        </div>
+      </div>
+    </div>`;
+  renderQAAddedList();
+  document.getElementById('qa-th').focus();
+}
+
+// session tasks เพิ่มในครั้งนี้ (เพื่อแสดง list)
+let qaSessionIds = [];
+
+function renderQAAddedList() {
+  const el = document.getElementById('qa-added-list');
+  if (!el) return;
+  const sessionTasks = customTasks.filter(t => qaSessionIds.includes(t.id));
+  if (!sessionTasks.length) { el.innerHTML=''; return; }
+
+  const mColors = {PVD1:'#2563eb',PVD3:'#7c3aed',PVD4:'#db2777',PVD5:'#d97706'};
+  let html = `<div style="margin-bottom:10px;">
+    <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px;">${L().ui.qaSessionLabel(sessionTasks.length)}</div>`;
+  sessionTasks.forEach(t => {
+    const c = mColors[t.machine] || '#64748b';
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;border:1px solid var(--border);">
+      <div style="width:4px;height:32px;border-radius:2px;background:${c};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.th}</div>
+        <div style="font-size:9px;color:var(--muted);">
+          <span style="background:${c};color:#fff;padding:1px 6px;border-radius:6px;font-weight:700;">${t.machine}</span>
+          · ${L().ui.qaDateLabel(t.day, L().monthsFull[t.fixedM], t.fixedY)}
+        </div>
+      </div>
+      <button onclick="qaEditTask('${t.id}')" style="padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:10px;cursor:pointer;">✏️</button>
+      <button onclick="qaDeleteTask('${t.id}')" style="padding:3px 8px;border-radius:6px;border:none;background:var(--ng);color:#fff;font-size:10px;cursor:pointer;">🗑️</button>
+    </div>`;
+  });
+  html += '</div><hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">';
+  el.innerHTML = html;
+}
+
+function qaDeleteTask(id) {
+  customTasks = customTasks.filter(t => t.id !== id);
+  qaSessionIds = qaSessionIds.filter(i => i !== id);
+  renderQAAddedList();
+  const calEl = document.getElementById('qa-mini-cal');
+  if(calEl) calEl.innerHTML = renderMiniCal();
+  render();
+}
+
+function qaEditTask(id) {
+  const t = customTasks.find(x => x.id === id);
+  if (!t) return;
+  // โหลดข้อมูลเดิมกลับเข้า form
+  document.getElementById('qa-th').value = t.th;
+  document.getElementById('qa-en').value = t.en;
+  document.getElementById('qa-cat').value = t.cat;
+  document.getElementById('qa-std').value = t.std_th || '';
+  document.getElementById('qa-freq').value = t.freq;
+  ['PVD1','PVD3','PVD4','PVD5'].forEach(m => {
+    const el = document.getElementById(`qa-${m}`);
+    if(el) el.checked = t.machine === m;
+  });
+  qaPickedDay = t.day;
+  qaPickerY = t.fixedY;
+  qaPickerM = t.fixedM;
+  const calEl = document.getElementById('qa-mini-cal');
+  if(calEl) calEl.innerHTML = renderMiniCal();
+  const disp = document.getElementById('qa-day-display');
+  if(disp) disp.textContent = L().ui.qaDateDisplay(t.day, L().monthsFull[t.fixedM], t.fixedY);
+  // ลบอันเดิมออก (จะบันทึกใหม่)
+  customTasks = customTasks.filter(x => x.id !== id);
+  qaSessionIds = qaSessionIds.filter(i => i !== id);
+  renderQAAddedList();
+  document.getElementById('qa-th').focus();
+  render();
+}
+
+function renderMiniCal() {
+  const l = L();
+  const fd = new Date(qaPickerY, qaPickerM, 1).getDay();
+  const dim = new Date(qaPickerY, qaPickerM+1, 0).getDate();
+  const today = new Date();
+  const taskMap = getAllTaskDays(qaPickerY, qaPickerM);
+  let html = `<div class="mini-cal">
+    <div class="mini-cal-header">
+      <button class="mini-cal-nav" onclick="miniCalNav(-1)">‹</button>
+      <span class="mini-cal-title">${l.monthsFull[qaPickerM]} ${qaPickerY}</span>
+      <button class="mini-cal-nav" onclick="miniCalNav(1)">›</button>
+    </div>
+    <div class="mini-cal-grid">`;
+  l.days.forEach(d => { html += `<div class="mini-cal-dh">${d}</div>`; });
+  for(let i=0;i<fd;i++) html += `<div class="mini-cal-day empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const dow = new Date(qaPickerY, qaPickerM, d).getDay();
+    const isToday = d===today.getDate() && qaPickerM===today.getMonth() && qaPickerY===today.getFullYear();
+    const isSelected = d === qaPickedDay;
+    const isSun = dow === 0;
+    const hasTasks = taskMap[d] && taskMap[d].length > 0;
+    let cls = 'mini-cal-day';
+    if(isSelected) cls += ' selected';
+    else if(hasTasks) cls += ' has-task';
+    if(isToday && !isSelected) cls += ' today-mark';
+    if(isSun) cls += ' sunday-day';
+    const onclick = isSun ? '' : `onclick="miniCalPick(${d})"`;
+    html += `<div class="${cls}" ${onclick}>${d}</div>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
+
+function miniCalNav(dir) {
+  qaPickerM += dir;
+  if(qaPickerM < 0){ qaPickerM=11; qaPickerY--; }
+  if(qaPickerM > 11){ qaPickerM=0; qaPickerY++; }
+  const el = document.getElementById('qa-mini-cal');
+  if(el) el.innerHTML = renderMiniCal();
+}
+
+function miniCalPick(d) {
+  qaPickedDay = d;
+  const l = L();
+  const el = document.getElementById('qa-mini-cal');
+  if(el) el.innerHTML = renderMiniCal();
+  const disp = document.getElementById('qa-day-display');
+  if(disp) disp.textContent = l.ui.qaDateDisplay(d, l.monthsFull[qaPickerM], qaPickerY);
+}
+
+function saveQuickTask(addAnother=false) {
+  const th = document.getElementById('qa-th')?.value?.trim();
+  const en = document.getElementById('qa-en')?.value?.trim();
+  const cat = document.getElementById('qa-cat')?.value?.trim() || 'Custom';
+  const freq = document.getElementById('qa-freq')?.value;
+  const std = document.getElementById('qa-std')?.value?.trim();
+  const selectedMachines = ['PVD1','PVD3','PVD4','PVD5'].filter(m=>document.getElementById(`qa-${m}`)?.checked);
+
+  if (!th || !en || !qaPickedDay || selectedMachines.length===0) {
+    showToast('⚠️ ' + L().ui.qaValidate); return;
+  }
+
+  selectedMachines.forEach(m => {
+    const newId = `custom-${freq}-${Date.now()}-${m.toLowerCase()}`;
+    qaSessionIds.push(newId);
+    customTasks.push({
+      id: newId,
+      machine: m,
+      machineColor: MACHINE_COLORS[m],
+      th, en, zh:en, my:en,
+      cat, std_th:std||'', std_en:std||'', std_zh:std||'', std_my:std||'',
+      freq,
+      months: null,
+      day: qaPickedDay,
+      fixedY: qaPickerY, fixedM: qaPickerM,
+      machines:[m], isCustom:true,
+    });
+  });
+
+  showToast(L().ui.qaToast(qaPickedDay, L().monthsFull[qaPickerM], qaPickerY, selectedMachines.join(', ')));
+  lsSave(); // บันทึกลง localStorage
+  render();
+
+  if (addAnother) {
+    // รีเซ็ตแค่ชื่องาน/เครื่อง แต่คงวันที่เดิมไว้
+    document.getElementById('qa-th').value = '';
+    document.getElementById('qa-en').value = '';
+    document.getElementById('qa-cat').value = '';
+    document.getElementById('qa-std').value = '';
+    ['PVD1','PVD3','PVD4','PVD5'].forEach(m => {
+      const el = document.getElementById(`qa-${m}`);
+      if(el) el.checked = true;
+    });
+    renderQAAddedList();
+    document.getElementById('qa-th').focus();
+    // อัปเดต mini cal
+    const calEl = document.getElementById('qa-mini-cal');
+    if(calEl) calEl.innerHTML = renderMiniCal();
+  } else {
+    document.getElementById('overlay').classList.remove('open');
+    cy = qaPickerY; cm = qaPickerM;
+    render();
+  }
+}
+
+function renderTaskCard(t,dc,saved,day){
+  const l=L();
+  const name=t[lang]||t.en;
+  const std=t['std_'+lang]||t.std_en;
+  let logHtml='';
+  if(saved){
+    const badgeCls=saved.status==='OK'||saved.status==='ပုံမှန်'||saved.status==='Normal'?'badge-ok':saved.status==='NG'||saved.status==='မပုံမှန်'||saved.status==='Abnormal'?'badge-ng':'badge-chg';
+// driveUrls มาก่อน (sync ข้ามอุปกรณ์) — ถ้าไม่มีค่อยใช้ base64 local
+    const hasDrive=(saved.driveUrls||[]).filter(Boolean).length>0;
+    const driveThumbs=(saved.driveUrls||[]).filter(Boolean).map(url=>{
+      const fid=url.match(/\/d\/([\w-]{20,})/)?.[1]||url.match(/[?&]id=([\w-]{20,})/)?.[1]||'';
+      const thumb=fid?`https://drive.google.com/thumbnail?id=${fid}&sz=w400`:'';
+      return `<div class="log-media-thumb" style="cursor:pointer;position:relative;" onclick="window.open('${url}','_blank')">
+        <img src="${thumb}" onerror="this.src='';this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:20px;\'>📎</div>'" style="width:100%;height:100%;object-fit:cover">
+        <div style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.6);border-radius:3px;padding:1px 3px;font-size:8px;color:#fff;">☁️</div>
+      </div>`;
+    }).join('');
+    const localThumbs=hasDrive?'':( (saved.media||[]).map(m=>
+      m.type&&m.type.startsWith('video')
+        ?`<div class="log-media-thumb" data-lb="${m.dataUrl}" data-lbtype="video"><video src="${m.dataUrl}" style="width:100%;height:100%;object-fit:cover"></video></div>`
+        :`<div class="log-media-thumb" data-lb="${m.dataUrl}" data-lbtype="img"><img src="${m.dataUrl}"></div>`
+    ).join('') );
+    const thumbs=driveThumbs||localThumbs;
+    logHtml=`<div class="log-saved">
+      <div class="log-saved-top">
+        <span class="status-badge ${badgeCls}">${saved.status}</span>
+        <button class="log-edit-btn" id="edit-${t.id}">${l.editBtn}</button>
+      </div>
+      ${saved.inspector?`<div style="font-size:10px;color:var(--muted);margin-bottom:2px;">👤 ${saved.inspector}</div>`:''}
+      ${saved.abDetail?`<div class="log-comment" style="color:var(--ng)">⚠️ ${saved.abDetail}</div>`:''}
+      ${saved.comment?`<div class="log-comment">${saved.comment}</div>`:''}
+      ${thumbs?`<div class="log-media">${thumbs}</div>`:''}
+    </div>`;
+  } else {
+    logHtml=renderEditForm(t);
+  }
+  const machineBadges=(t.machines||[]).map(m=>{
+    const cls=m.toLowerCase().replace(' ','');
+    return `<span class="machine-badge ${cls}">${m}</span>`;
+  }).join('');
+  const mColor = t.machineColor || MACHINE_COLORS[t.machine] || '#64748b';
+  const mLabel = t.machine || '';
+  const editTaskLabels = {th:'⚙️ แก้ไข Task', my:'⚙️ Task ပြင်', en:'⚙️ Edit Task', zh:'⚙️ 编辑任务'};
+  const deleteTaskLabels = {th:'🗑️ ลบ', my:'🗑️ ဖျက်', en:'🗑️ Delete', zh:'🗑️ 删除'};
+  const editTaskBtn = adminUnlocked ? `<button class="log-edit-btn" onclick="toggleTaskEdit('${t.id}',${day})">${editTaskLabels[lang]||editTaskLabels.en}</button>` : '';
+  const deleteTaskBtn = adminUnlocked ? `<button class="log-edit-btn" style="color:var(--ng);" onclick="deleteTaskInstance('${t.id}',${day})">${deleteTaskLabels[lang]||deleteTaskLabels.en}</button>` : '';
+  return `<div class="tc" id="card-${t.id}" style="border-left:4px solid ${mColor};">
+    <div class="tc-top"><div class="td ${dc}"></div>
+    <div class="tc-info">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="background:${mColor};color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.5px;">${mLabel}</span>
+          <span class="tag cat">${t.cat}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">${editTaskBtn}${deleteTaskBtn}</div>
+      </div>
+      <div class="tn">${name}</div>
+      <div class="tn-sub">${t.th}${lang!=='th'?' / '+t.en:''}</div>
+      <span class="tag std">📋 ${std}</span>
+    </div></div>
+    <div id="task-edit-${t.id}"></div>
+    <div class="tc-log">${logHtml}</div>
+  </div>`;
+}
+
+function findTaskById(id){
+  return TASKS.find(x=>x.id===id) || customTasks.find(x=>x.id===id);
+}
+
+function toggleTaskEdit(id, day){
+  const el = document.getElementById(`task-edit-${id}`);
+  if(!el) return;
+  if(el.innerHTML){ el.innerHTML=''; return; }
+  const t = findTaskById(id);
+  if(!t) return;
+  const ui = L().ui;
+  const tl = {
+    th:{name:'ชื่องาน (ไทย)',nameEn:'ชื่องาน (EN)',cat:'หมวดหมู่',day:'วันที่ (1-28)',std:'มาตรฐาน / เกณฑ์',save:'💾 บันทึก',cancel:'ยกเลิก'},
+    my:{name:'အမည် (ထိုင်း)',nameEn:'အမည် (EN)',cat:'အမျိုးအစား',day:'ရက် (1-28)',std:'စံနှုန်း',save:'💾 သိမ်းမည်',cancel:'မလုပ်တော့'},
+    en:{name:'Task Name (TH)',nameEn:'Task Name (EN)',cat:'Category',day:'Day (1-28)',std:'Standard / Criteria',save:'💾 Save',cancel:'Cancel'},
+    zh:{name:'任务名 (泰文)',nameEn:'任务名 (英文)',cat:'类别',day:'日期 (1-28)',std:'标准',save:'💾 保存',cancel:'取消'},
+  };
+  const tf = tl[lang]||tl.en;
+  el.innerHTML = `
+    <div style="margin:8px 0;padding:10px;background:var(--bg);border:1.5px dashed var(--accent);border-radius:8px;">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <input id="te-th-${id}" value="${t.th||''}" placeholder="${tf.name}" style="padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;">
+        <input id="te-en-${id}" value="${t.en||''}" placeholder="${tf.nameEn}" style="padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;">
+        <div style="display:flex;gap:6px;">
+          <input id="te-cat-${id}" value="${t.cat||''}" placeholder="${tf.cat}" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;">
+          <select id="te-freq-${id}" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;">
+            <option value="1m" ${t.freq==='1m'?'selected':''}>${ui.qaFreq1m}</option>
+            <option value="3m" ${t.freq==='3m'?'selected':''}>${ui.qaFreq3m}</option>
+            <option value="6m" ${t.freq==='6m'?'selected':''}>${ui.qaFreq6m}</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input id="te-day-${id}" type="number" min="1" max="28" value="${t.day||''}" placeholder="${tf.day}" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;">
+          <select id="te-machine-${id}" style="flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;">
+            ${['PVD1','PVD3','PVD4','PVD5'].map(m=>`<option value="${m}" ${t.machine===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <input id="te-std-${id}" value="${t.std_th||''}" placeholder="${tf.std}" style="padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-family:inherit;">
+        <div style="display:flex;gap:6px;">
+          <button onclick="saveTaskEditConfirm('${id}',${day})" style="flex:1;padding:8px;border-radius:7px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer;">${tf.save}</button>
+          <button onclick="document.getElementById('task-edit-${id}').innerHTML=''" style="flex:1;padding:8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;cursor:pointer;">${tf.cancel}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function saveTaskEditConfirm(id, day){
+  const t = findTaskById(id);
+  if(!t) return;
+  const th = document.getElementById(`te-th-${id}`)?.value?.trim();
+  const en = document.getElementById(`te-en-${id}`)?.value?.trim();
+  const cat = document.getElementById(`te-cat-${id}`)?.value?.trim() || 'Custom';
+  const freq = document.getElementById(`te-freq-${id}`)?.value;
+  const newDay = parseInt(document.getElementById(`te-day-${id}`)?.value);
+  const machine = document.getElementById(`te-machine-${id}`)?.value;
+  const std = document.getElementById(`te-std-${id}`)?.value?.trim();
+
+  if (!th || !en || !newDay || isNaN(newDay)) {
+    const msgs={th:'⚠️ กรุณากรอกชื่องานและวันที่ให้ครบ',my:'⚠️ အမည်နှင့်ရက် ဖြည့်ပါ',en:'⚠️ Please fill in task name and day',zh:'⚠️ 请填写任务名称和日期'};
+    showToast(msgs[lang]||msgs.en);
+    return;
+  }
+
+  t.th = th; t.en = en; t.zh = en; t.my = en;
+  t.cat = cat;
+  t.std_th = std||''; t.std_en = std||''; t.std_zh = std||''; t.std_my = std||'';
+  t.freq = freq;
+  t.day = Math.max(1, Math.min(28, newDay));
+  t.machine = machine;
+  t.machineColor = MACHINE_COLORS[machine];
+  t.machines = [machine];
+  // recompute recurrence months, unless this is a one-off custom task pinned to a specific date
+  if (t.fixedY === undefined) {
+    t.months = MACHINE_MONTHS[freq];
+  }
+
+  const savedMsgs={th:'✅ บันทึกการแก้ไขแล้ว',my:'✅ ပြင်ဆင်ပြီး',en:'✅ Changes saved',zh:'✅ 修改已保存'};
+  showToast(savedMsgs[lang]||savedMsgs.en);
+  lsSave();
+  openModal(day);
+  render();
+}
+
+function deleteTaskInstance(id, day){
+  const t = findTaskById(id);
+  if(!t) return;
+  const name = t[lang] || t.th || t.en;
+  const confirmMsgs = {
+    th:`ลบ Task "${name}" ออกจากระบบ?\n(ลบแล้วจะหายจากทุกเดือนที่ task นี้ขึ้น)`,
+    my:`Task "${name}" ဖျက်မလား?`,
+    en:`Delete task "${name}"?\n(This removes it from all recurring months)`,
+    zh:`删除任务 "${name}"？`,
+  };
+  if (!confirm(confirmMsgs[lang]||confirmMsgs.en)) return;
+
+  const idxT = TASKS.findIndex(x=>x.id===id);
+  if (idxT > -1) {
+    TASKS.splice(idxT,1);
+  } else {
+    customTasks = customTasks.filter(x=>x.id!==id);
+  }
+
+  const toastMsgs = {th:'🗑️ ลบ Task แล้ว',my:'🗑️ ဖျက်ပြီး',en:'🗑️ Task deleted',zh:'🗑️ 已删除'};
+  showToast(toastMsgs[lang]||toastMsgs.en);
+  lsSave();
+  openModal(day);
+  render();
+}
+
+function renderEditForm(t){
+  const l=L();
+  const s=l.status;
+  const ab=l.abnormal||{};
+  return `<div id="form-${t.id}">
+    <div class="log-status">
+      <div class="sbtn ok" data-tid="${t.id}" data-status="OK">${s.ok}</div>
+      <div class="sbtn ng" data-tid="${t.id}" data-status="NG">${s.ng}</div>
+      <div class="sbtn chg" data-tid="${t.id}" data-status="CHG">${s.chg}</div>
+    </div>
+    <div id="abnormal-fields-${t.id}" style="display:none;background:rgba(220,38,38,.06);border:1px solid var(--ng);border-radius:8px;padding:10px;margin:8px 0;">
+      <div style="font-size:11px;font-weight:700;color:var(--ng);margin-bottom:8px;">${ab.title||'⚠️ กรอกรายละเอียด'}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">${ab.detailLabel}</div>
+      <textarea class="comment-box" id="ab-detail-${t.id}" rows="2" placeholder="${ab.detailPlaceholder||'อธิบายปัญหา...'}"></textarea>
+      <div style="font-size:10px;color:var(--muted);margin:6px 0 4px;">${ab.severityLabel}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="sev-btn" data-tid="${t.id}" data-sev="low">${ab.sevLow}</button>
+        <button class="sev-btn" data-tid="${t.id}" data-sev="med">${ab.sevMed}</button>
+        <button class="sev-btn" data-tid="${t.id}" data-sev="high">${ab.sevHigh}</button>
+        <button class="sev-btn" data-tid="${t.id}" data-sev="crit">${ab.sevCrit}</button>
+      </div>
+    </div>
+    <input class="comment-box" id="inspector-${t.id}" placeholder="${L().ui.inspector}" value="${window._lastInspector||''}" style="margin-bottom:6px;" oninput="window._lastInspector=this.value">
+    <textarea class="comment-box" id="cmt-${t.id}" rows="2" placeholder="${l.comment}"></textarea>
+    <div class="media-label">${l.mediaLabel}</div>
+    <div class="media-preview" id="prev-${t.id}"></div>
+    <label class="upload-btn">${l.uploadBtn}<input type="file" id="file-${t.id}" accept="image/*,video/*" multiple></label>
+    <br><br>
+    <button class="save-btn" id="save-${t.id}">${l.saveBtn}</button>
+  </div>`;
+}
+
+function bindCardEvents(t,day){
+  const tid=t.id;
+  if(!editingTask[tid]) editingTask[tid]={status:null,mediaFiles:[]};
+  document.querySelectorAll(`.sbtn[data-tid="${tid}"]`).forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const alreadySel = btn.classList.contains('sel');
+      document.querySelectorAll(`.sbtn[data-tid="${tid}"]`).forEach(b=>b.classList.remove('sel'));
+      if(!alreadySel){
+        btn.classList.add('sel');
+        editingTask[tid].status=btn.dataset.status;
+      } else {
+        editingTask[tid].status=null;
+      }
+      const abFields=document.getElementById(`abnormal-fields-${tid}`);
+      if(abFields) abFields.style.display = (!alreadySel && btn.dataset.status==='NG') ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll(`.sev-btn[data-tid="${tid}"]`).forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll(`.sev-btn[data-tid="${tid}"]`).forEach(b=>b.classList.remove('sel'));
+      btn.classList.add('sel');
+      editingTask[tid].severity=btn.dataset.sev;
+    });
+  });
+  const fi=document.getElementById(`file-${tid}`);
+  if(fi) fi.addEventListener('change',e=>{
+    Array.from(e.target.files).forEach(file=>{
+      const r=new FileReader();
+      r.onload=ev=>{editingTask[tid].mediaFiles.push({type:file.type,dataUrl:ev.target.result,name:file.name,_file:file});renderPreview(tid);};
+      r.readAsDataURL(file);
+    });
+    fi.value='';
+  });
+  const saveBtn=document.getElementById(`save-${tid}`);
+  if(saveBtn) saveBtn.addEventListener('click',()=>{
+    // ── ตรวจสอบว่าตั้งค่า Web App URL แล้วหรือยัง ──
+    if (!GStorage.isReady()) {
+      alert('⚠️ APPS_SCRIPT_URL not configured\nPlease edit index.html and set APPS_SCRIPT_URL');
+      return;
+    }
+    const cmt=document.getElementById(`cmt-${tid}`)?.value||'';
+    const et=editingTask[tid];
+    const status=et.status||null;
+    if(!status){ showToast(L().ui.selectStatusFirst||'⚠️ Please select OK / NG / Replace first'); return; }
+    if(status==='NG'){
+      const abDetail=document.getElementById(`ab-detail-${tid}`)?.value?.trim()||'';
+      if(!abDetail||!et.severity){ showToast((L().abnormal||{}).required); return; }
+      et.abDetail=abDetail;
+    }
+    const k=logKey(tid,cy,cm,day);
+    const inspector=document.getElementById(`inspector-${tid}`)?.value?.trim()||'';
+    window._lastInspector=inspector;
+    // บันทึก local ทันที
+    LOG[k]={status,comment:cmt,media:et.mediaFiles,abDetail:et.abDetail||'',severity:et.severity||'',inspector,driveUrls:[]};
+    lsSave();
+    // ── disable ปุ่ม + spinner ──
+    saveBtn.disabled=true; saveBtn.textContent=L().ui.saving||'⏳ Saving...';
+    (async()=>{
+      try{
+        const dateStr=`${cy}-${String(cm+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        // อัปโหลดรูปก่อน — Apps Script เก็บลง Drive แล้วคืน URL กลับมา
+        const driveUrls=[...(et.existingDriveUrls||[])];
+        const uploadErrors=[];
+        for(const mf of et.mediaFiles){
+          if(mf._file){
+            // เตือนถ้าไฟล์ใหญ่เกินไป (รูปจากมือถือมักใหญ่กว่าคอมมาก)
+            const sizeMB = mf._file.size / (1024*1024);
+            try{
+              const url = await GStorage.uploadFile(mf._file,tid,dateStr);
+              if(url){ driveUrls.push(url); }
+              else{ uploadErrors.push(`${mf.name} (${sizeMB.toFixed(1)}MB): no URL returned`); }
+            }
+            catch(e){
+              console.warn('upload failed:',mf.name,sizeMB.toFixed(1)+'MB',e);
+              uploadErrors.push(`${mf.name} (${sizeMB.toFixed(1)}MB): ${e?.message||e}`);
+            }
+          } else if(mf.driveUrl){ driveUrls.push(mf.driveUrl); }
+        }
+        if(uploadErrors.length>0){
+          // โชว์ error จริงให้เห็น แทนที่จะเงียบไว้
+          showToast(L().ui.uploadFail ? L().ui.uploadFail+uploadErrors.length+': '+uploadErrors.join(' | ') : '⚠️ Upload failed '+uploadErrors.length+': '+uploadErrors.join(' | '));
+          console.error('Upload errors detail:', uploadErrors);
+        }
+        // บันทึก log พร้อม URL ลง Sheet (upsert)
+        await GStorage.saveLog({
+          key:k, taskId:tid,
+          taskTh:t.th||'', taskEn:t.en||'',
+          cat:t.cat||'', freq:t.freq||'',
+          machine:(t.machines||[]).join(', '),
+          status, inspector, comment:cmt,
+          severity:et.severity||'', abDetail:et.abDetail||'',
+          driveUrls,
+        });
+        LOG[k].driveUrls=driveUrls; lsSave();
+        showToast('☁️ '+L().toast);
+      }catch(e){
+        console.warn('saveLog failed:',e);
+        showToast(L().ui.saveSheetFail||'⚠️ Sheet save failed (saved locally)');
+      }finally{
+        saveBtn.disabled=false; saveBtn.textContent=L().saveBtn;
+      }
+      if(status==='NG'){
+        const caId='ca-'+(++caCounter)+'-'+Date.now();
+        CA_TASKS[caId]={id:caId,taskId:tid,taskName:t[lang]||t.th,detail:et.abDetail,severity:et.severity,caStatus:'pending',createdAt:new Date().toLocaleString(),cy,cm};
+        lsSave(); showToast((L().abnormal||{}).caCreated);
+      }
+      delete editingTask[tid];
+      const saved=LOG[k];
+      const badgeCls=saved.status==='OK'?'badge-ok':saved.status==='NG'?'badge-ng':'badge-chg';
+      const sevLabel=saved.severity?{low:'🟡',med:'🟠',high:'🔴',crit:'⛔'}[saved.severity]||'':'';
+// driveUrls มาก่อน (sync ข้ามอุปกรณ์) — ถ้าไม่มีค่อยใช้ base64 local
+      const hasDrive=(saved.driveUrls||[]).filter(Boolean).length>0;
+      const driveThumbs=(saved.driveUrls||[]).filter(Boolean).map(url=>{
+        const fid=url.match(/\/d\/([\w-]{20,})/)?.[1]||url.match(/[?&]id=([\w-]{20,})/)?.[1]||'';
+        const thumb=fid?`https://drive.google.com/thumbnail?id=${fid}&sz=w400`:'';
+        return `<div class="log-media-thumb" style="cursor:pointer;position:relative;" onclick="window.open('${url}','_blank')">
+          <img src="${thumb}" onerror="this.src='';this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:20px;\'>📎</div>'" style="width:100%;height:100%;object-fit:cover">
+          <div style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.6);border-radius:3px;padding:1px 3px;font-size:8px;color:#fff;">☁️</div>
+        </div>`;
+      }).join('');
+      const localThumbs=hasDrive?'':( (saved.media||[]).map(m=>
+        m.type&&m.type.startsWith('video')
+          ?`<div class="log-media-thumb" data-lb="${m.dataUrl}" data-lbtype="video"><video src="${m.dataUrl}" style="width:100%;height:100%;object-fit:cover"></video></div>`
+          :`<div class="log-media-thumb" data-lb="${m.dataUrl}" data-lbtype="img"><img src="${m.dataUrl}"></div>`
+      ).join('') );
+      const thumbs=driveThumbs||localThumbs;
+      const card=document.getElementById(`card-${tid}`);
+      if(card){
+        card.querySelector('.tc-log').innerHTML=`<div class="log-saved">
+          <div class="log-saved-top">
+            <span class="status-badge ${badgeCls}">${saved.status}${sevLabel?' '+sevLabel:''}</span>
+            <button class="log-edit-btn" id="edit-${tid}">${L().editBtn}</button>
+          </div>
+          ${saved.inspector?`<div style="font-size:10px;color:var(--muted);margin-bottom:2px;">👤 ${saved.inspector}</div>`:''}
+          ${saved.abDetail?`<div class="log-comment" style="color:var(--ng)">⚠️ ${saved.abDetail}</div>`:''}
+          ${saved.comment?`<div class="log-comment">${saved.comment}</div>`:''}
+          ${thumbs?`<div class="log-media">${thumbs}</div>`:''}
+        </div>`;
+        document.getElementById(`edit-${tid}`)?.addEventListener('click',()=>enterEditMode(t,day));
+        card.querySelectorAll('[data-lb]').forEach(el=>el.addEventListener('click',()=>openLightbox(el.dataset.lb,el.dataset.lbtype)));
+      }
+      render();
+      if(document.getElementById('pageDashboard').style.display!=='none') renderDashboard();
+    })();
+  });
+}
+
+function renderPreview(tid){
+  const prev=document.getElementById(`prev-${tid}`);
+  if(!prev) return;
+  const files=editingTask[tid]?.mediaFiles||[];
+  prev.innerHTML=files.map((m,i)=>
+    m.type.startsWith('video')
+      ?`<div class="media-thumb"><video src="${m.dataUrl}"></video><button class="del-btn" onclick="removeMedia('${tid}',${i})">✕</button></div>`
+      :`<div class="media-thumb"><img src="${m.dataUrl}"><button class="del-btn" onclick="removeMedia('${tid}',${i})">✕</button></div>`
+  ).join('');
+}
+
+function removeMedia(tid,idx){ if(editingTask[tid]) editingTask[tid].mediaFiles.splice(idx,1); renderPreview(tid); }
+
+function enterEditMode(t,day){
+  const k=logKey(t.id,cy,cm,day);
+  const saved=LOG[k]||{};
+  editingTask[t.id]={status:saved.status||null,mediaFiles:[...(saved.media||[])],existingDriveUrls:[...(saved.driveUrls||[])]};
+  const logDiv=document.getElementById(`card-${t.id}`)?.querySelector('.tc-log');
+  if(logDiv){
+    logDiv.innerHTML=renderEditForm(t);
+    document.getElementById(`cmt-${t.id}`).value=saved.comment||'';
+  if(document.getElementById(`inspector-${t.id}`)) document.getElementById(`inspector-${t.id}`).value=saved.inspector||window._lastInspector||'';
+    renderPreview(t.id);
+    bindCardEvents(t,day);
+    if(saved.status) document.querySelectorAll(`.sbtn[data-tid="${t.id}"]`).forEach(b=>{if(b.dataset.status===saved.status)b.classList.add('sel');});
+  }
+}
+
+function showToast(msg){
+  const el=document.createElement('div');
+  el.className='toast'; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2500);
+}
+
+function openLightbox(src,type){
+  document.getElementById('lbContent').innerHTML=type==='video'
+    ?`<video src="${src}" controls autoplay style="max-width:95vw;max-height:85vh;border-radius:8px"></video>`
+    :`<img src="${src}" style="max-width:95vw;max-height:85vh;border-radius:8px">`;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function exportCSV(){
+  const keys=Object.keys(LOG);
+  const l=L();
+  if(!keys.length){alert(l.noExport);return;}
+  const BOM='\uFEFF';
+  const headers=['Date','Task ID','Task (TH)','Task (MY)','Task (EN)','Category','Frequency','Status','Comment','Files','Logged At'];
+  const rows=[headers];
+  keys.forEach(k=>{
+    const log=LOG[k];
+    const [taskId,dateStr]=k.split('__');
+    const t=TASKS.find(x=>x.id===taskId)||{};
+    const freqMap={m1:'1M Monthly',m3:'3M Quarterly',m6:'6M Semi-Annual',sp:'Spare Parts'};
+    rows.push([dateStr,taskId,t.th||'',t.my||'',t.en||'',t.cat||'',freqMap[t.freq]||'',log.status||'',(log.comment||'').replace(/"/g,'""'),(log.media||[]).length,new Date().toLocaleString()]);
+  });
+  const csv=BOM+rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const now=new Date();
+  a.href=url;a.download=`PVD_Log_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.csv`;
+  a.click();URL.revokeObjectURL(url);
+}
+
+document.getElementById('lbClose').onclick=()=>document.getElementById('lightbox').classList.remove('open');
+document.getElementById('lightbox').onclick=function(e){if(e.target===this)this.classList.remove('open');};
+document.getElementById('closeBtn').onclick=()=>{document.getElementById('overlay').classList.remove('open');render();};
+document.getElementById('overlay').onclick=function(e){if(e.target===this){this.classList.remove('open');render();}};
+document.getElementById('prevBtn').onclick=()=>{cm--;if(cm<0){cm=11;cy--;}renderAll();};
+document.getElementById('nextBtn').onclick=()=>{cm++;if(cm>11){cm=0;cy++;}renderAll();};
+// tabs replaced by freq dropdown — handled by setCalFreqFilter()
+
+// Init
+
+function updateCAStatus(caId, newStatus) {
+  if (CA_TASKS[caId]) {
+    CA_TASKS[caId].caStatus = newStatus;
+    lsSave();
+    renderDashboard();
+  }
+}
+
+function renderAll() {
+  // Update filter all-labels on lang change
+  var dfl=document.getElementById('dashFreqFilterLabel'); if(dfl&&typeFilter==='all') dfl.textContent=L().all;
+  var dfa=document.getElementById('dashFreqLabel-all'); if(dfa) dfa.textContent=L().all;
+  var cfl=document.getElementById('calFreqFilterLabel'); if(cfl&&activeView==='all') cfl.textContent=L().all;
+  var cfa=document.getElementById('calFreqLabel-all'); if(cfa) cfa.textContent=L().all;
+  var cpl=document.getElementById('calPvdFilterLabel'); if(cpl&&calPvdFilter==='all') cpl.textContent=L().ui.machine;
+    const onDash = document.getElementById('pageDashboard').style.display !== 'none';
+  updateMonthLabel();
+  if (onDash) renderDashboard();
+  else render();
+}
+
+setLang('th');
+renderDashboard();
+renderCalPvdBar();
+
+// ===== ADMIN =====
+const ADMIN_PIN = '000'; // default PIN
+let _cachedPin = null;
+
+async function getAdminPin() {
+  if (_cachedPin) return _cachedPin;
+  try {
+    const r = await window.storage.get('pvd_admin_pin', true);
+    _cachedPin = r ? r.value : ADMIN_PIN;
+  } catch(e) { _cachedPin = ADMIN_PIN; }
+  return _cachedPin;
+}
+
+async function saveAdminPin(pin) {
+  try {
+    await window.storage.set('pvd_admin_pin', pin, true);
+    _cachedPin = pin;
+  } catch(e) { console.error('PIN save failed', e); }
+}
+let customTasks = []; // extra tasks added by admin
+let adminUnlocked = false;
+
+// โหลดข้อมูลจาก localStorage ทันที (ก่อนที่ Google จะ login)
+lsLoad();
+let editingTaskId = null;
+
+function openAdmin() {
+  if (adminUnlocked) { showPage('admin'); return; }
+  // Show PIN dialog
+  const overlay = document.createElement('div');
+  overlay.className = 'admin-overlay';
+  overlay.id = 'pinOverlay';
+  const ui = L().ui;
+  overlay.innerHTML = `
+    <div class="admin-modal" style="width:280px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:8px;">🔒</div>
+      <div style="font-weight:800;font-size:14px;margin-bottom:4px;">Admin PIN</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">${ui.pinTitle}</div>
+      <div class="admin-pin-box">
+        <input class="admin-pin-input" id="pinInput" type="password" maxlength="6" placeholder="••••" autofocus>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="admin-btn add" style="flex:1" onclick="checkPin()">${ui.pinLogin}</button>
+          <button class="admin-btn close" onclick="document.getElementById('pinOverlay').remove()">${ui.pinCancel}</button>
+        </div>
+        <div id="pinErr" style="color:var(--ng);font-size:11px;margin-top:6px;display:none;">${ui.pinWrong}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('pinInput').addEventListener('keydown', e => { if(e.key==='Enter') checkPin(); });
+}
+
+async function checkPin() {
+  const pin = document.getElementById('pinInput')?.value;
+  if (pin === ADMIN_PIN) {
+    adminUnlocked = true;
+    document.getElementById('pinOverlay')?.remove();
+    showPage('admin');
+  } else {
+    document.getElementById('pinErr').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+
+function renderAdmin() {
+  const ui = L().ui;
+  let html = '';
+
+  // PIN change section only
+  html += `<div class="admin-section">
+    <h3>${ui.pinChangeTitle}</h3>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="newPin" type="password" placeholder="${ui.pinNewPlaceholder}" style="padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;width:200px;">
+      <button class="admin-btn edit" onclick="changePin()">${ui.pinSave}</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;">${ui.pinHint}</div>
+  </div>`;
+
+  document.getElementById('adminContent').innerHTML = html;
+}
+
+function renderTaskForm(existing) {
+  const machines = ['PVD1','PVD3','PVD4','PVD5'];
+  const mColors = {PVD1:'#2563eb',PVD3:'#7c3aed',PVD4:'#db2777',PVD5:'#d97706'};
+  const id = existing?.id || '';
+  const ui = L().ui;
+  const tfLabels = {
+    th: {nameLabel:'ชื่องาน (ไทย) *', namePh:'เช่น ตรวจสอบน้ำมันปั๊ม', cat:'หมวดหมู่ (Category)', catPh:'เช่น Oil, Belt, Seal', freq:'ความถี่', machine:'เครื่อง PVD *', day:'วันที่ในเดือน *', std:'มาตรฐาน / เกณฑ์', stdPh:'เช่น ไม่มีรอยรั่ว', save:'💾 บันทึก Task'},
+    my: {nameLabel:'အလုပ်အမည် (ထိုင်း) *', namePh:'ဥပမာ Pump ဆီ စစ်', cat:'အမျိုးအစား', catPh:'ဥပမာ Oil, Belt, Seal', freq:'ကြိမ်နှုန်း', machine:'PVD စက် *', day:'လတွင်းရက် *', std:'စံနှုန်း / သတ်မှတ်ချက်', stdPh:'ဥပမာ ယိုစိမ့်မှုမရှိ', save:'💾 Task သိမ်းဆည်း'},
+    en: {nameLabel:'Task Name (Thai) *', namePh:'e.g. Pump Oil Check', cat:'Category', catPh:'e.g. Oil, Belt, Seal', freq:'Frequency', machine:'PVD Machine *', day:'Day of Month *', std:'Standard / Criteria', stdPh:'e.g. No leaks', save:'💾 Save Task'},
+    zh: {nameLabel:'任务名称 (泰文) *', namePh:'例如 泵油检查', cat:'类别', catPh:'例如 Oil, Belt, Seal', freq:'频率', machine:'PVD 机器 *', day:'月份中的日期 *', std:'标准 / 判定基准', stdPh:'例如 无泄漏', save:'💾 保存任务'},
+  };
+  const lf = tfLabels[lang] || tfLabels.en;
+  return `<div class="admin-form" id="taskForm">
+    <div class="admin-form-row">
+      <div>
+        <label>${lf.nameLabel}</label>
+        <input id="f-th" value="${existing?.th||''}" placeholder="${lf.namePh}">
+      </div>
+      <div>
+        <label>Task Name (EN) *</label>
+        <input id="f-en" value="${existing?.en||''}" placeholder="e.g. Pump Oil Check">
+      </div>
+    </div>
+    <div class="admin-form-row">
+      <div>
+        <label>${lf.cat}</label>
+        <input id="f-cat" value="${existing?.cat||''}" placeholder="${lf.catPh}">
+      </div>
+      <div>
+        <label>${lf.freq}</label>
+        <select id="f-freq">
+          <option value="1m" ${existing?.freq==='1m'?'selected':''}>${ui.qaFreq1m}</option>
+          <option value="3m" ${existing?.freq==='3m'?'selected':''}>${ui.qaFreq3m}</option>
+          <option value="6m" ${existing?.freq==='6m'?'selected':''}>${ui.qaFreq6m}</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label>${lf.machine}</label>
+      <div class="machine-check">
+        ${machines.map(m=>`<label>
+          <input type="checkbox" id="f-${m}" ${existing?.machines?.includes(m)||!existing?'checked':''}>
+          <span style="background:${mColors[m]};color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px;">${m}</span>
+        </label>`).join('')}
+      </div>
+    </div>
+    <div class="admin-form-row">
+      <div>
+        <label>${lf.day}</label>
+        <input id="f-day" type="number" min="1" max="28" value="${existing?.day||''}" placeholder="1-28">
+      </div>
+      <div>
+        <label>${lf.std}</label>
+        <input id="f-std" value="${existing?.std_th||''}" placeholder="${lf.stdPh}">
+      </div>
+    </div>
+    <input type="hidden" id="f-id" value="${id}">
+    <button class="admin-btn add" onclick="saveCustomTask()">${lf.save}</button>
+  </div>`;
+}
+
+function saveCustomTask() {
+  const th = document.getElementById('f-th')?.value?.trim();
+  const en = document.getElementById('f-en')?.value?.trim();
+  const cat = document.getElementById('f-cat')?.value?.trim() || 'Custom';
+  const freq = document.getElementById('f-freq')?.value;
+  const day = parseInt(document.getElementById('f-day')?.value);
+  const std = document.getElementById('f-std')?.value?.trim();
+  const selectedMachines = ['PVD1','PVD3','PVD4','PVD5'].filter(m=>document.getElementById(`f-${m}`)?.checked);
+  const existId = document.getElementById('f-id')?.value;
+
+  if (!th || !en || !day || selectedMachines.length===0) {
+    const msgs={th:'⚠️ กรุณากรอกชื่องาน, วันที่ และเลือกเครื่องอย่างน้อย 1 ตัว',my:'⚠️ အမည်၊ ရက်၊ စက်တစ်ခု ရွေးပါ',en:'⚠️ Please fill in task name, date, and select at least 1 machine',zh:'⚠️ 请填写任务名称、日期并至少选择一台机器'};
+    showToast(msgs[lang]||msgs.en); return;
+  }
+
+  const monthsMap = {'1m':null,'3m':[1,4,7,10],'6m':[1,7]};
+
+  // Remove existing if editing
+  if (existId) customTasks = customTasks.filter(t=>t.id!==existId);
+
+  // Add one task per machine
+  selectedMachines.forEach(m => {
+    customTasks.push({
+      id: `custom-${freq}-${Date.now()}-${m.toLowerCase()}`,
+      machine: m,
+      machineColor: MACHINE_COLORS[m],
+      th, en, zh:en, my:en,
+      cat, std_th:std||'', std_en:std||'', std_zh:std||'', std_my:std||'',
+      freq, months:monthsMap[freq], day,
+      machines:[m], isCustom:true,
+    });
+  });
+
+  const savedMsgs={th:'✅ บันทึก Task แล้ว!',my:'✅ Task သိမ်းပြီး!',en:'✅ Task saved!',zh:'✅ 任务已保存！'};
+  showToast(savedMsgs[lang]||savedMsgs.en);
+  lsSave();
+  renderAdmin();
+  render();
+}
+
+function deleteCustomTask(id) {
+  const confirmMsgs = {th:'ลบ Task นี้?',my:'ဒီ Task ကို ဖျက်မလား?',en:'Delete this task?',zh:'删除此任务？'};
+  const toastMsgs = {th:'🗑️ ลบแล้ว',my:'🗑️ ဖျက်ပြီး',en:'🗑️ Deleted',zh:'🗑️ 已删除'};
+  if (!confirm(confirmMsgs[lang]||confirmMsgs.en)) return;
+  customTasks = customTasks.filter(t=>t.id!==id);
+  showToast(toastMsgs[lang]||toastMsgs.en);
+  lsSave();
+  renderAdmin();
+  render();
+}
+
+function editCustomTask(id) {
+  const t = customTasks.find(x=>x.id===id);
+  if (!t) return;
+  const formEl = document.getElementById('taskForm');
+  if (formEl) formEl.outerHTML = renderTaskForm(t);
+  // Re-inject
+  document.querySelector('.admin-section h3')?.closest('.admin-section')?.querySelector('#taskForm')?.scrollIntoView({behavior:'smooth'});
+}
+
+function editTaskDay(taskId, currentDay, machine) {
+  const newDay = prompt(`Edit inspection day for ${machine}\nCurrent day: ${currentDay}\n\nNew day (1-28):`, currentDay);
+  if (!newDay || isNaN(parseInt(newDay))) return;
+  const d = Math.max(1, Math.min(28, parseInt(newDay)));
+  // Find in TASKS and update
+  const t = TASKS.find(x=>x.id===taskId);
+  if (t) { t.day = d; showToast(`✅ Updated ${machine} to day ${d}`); renderAdmin(); render(); }
+}
+
+async function changePin() {
+  const p = document.getElementById('newPin')?.value?.trim();
+  const pinMsgs = {th:'⚠️ PIN ต้องมีอย่างน้อย 4 ตัว',my:'⚠️ PIN အနည်းဆုံး 4 လုံး လိုသည်',en:'⚠️ PIN must be at least 4 digits',zh:'⚠️ PIN 至少需要 4 位数字'};
+  const pinSavedMsgs = {th:'✅ เปลี่ยน PIN แล้ว! ทุกเครื่องจะใช้ PIN ใหม่ทันที',my:'✅ PIN ပြောင်းပြီး! စက်အားလုံး ချက်ချင်း PIN အသစ် သုံးမည်',en:'✅ PIN changed! All devices will use the new PIN immediately',zh:'✅ PIN 已修改！所有设备将立即使用新 PIN'};
+  if (!p || p.length < 4) { showToast(pinMsgs[lang]||pinMsgs.en); return; }
+  await saveAdminPin(p);
+  document.getElementById('newPin').value = '';
+  showToast(pinSavedMsgs[lang]||pinSavedMsgs.en);
+}
+
+// custom tasks are included via getAllTaskDays directly
+
+// ════════════════════════════════════════════════════════════
+//  APPS SCRIPT BACKEND  (ไม่ต้อง login Google)
+//  1. Deploy Code.gs เป็น Web App (Execute as: Me, Access: Anyone)
+//  2. วาง URL ด้านล่าง
+// ════════════════════════════════════════════════════════════
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsGr2qESa6BmYuC7zvWVofwT0CP8sKi2OQLjr32WSlv9RSxmqs5NEw0x5I8bvq082k9g/exec'; // ← เปลี่ยนตรงนี้
+
+const GStorage = (() => {
+  function isReady() {
+    return !!(APPS_SCRIPT_URL && APPS_SCRIPT_URL.startsWith('https://'));
+  }
+
+  async function _post(payload, timeoutMs = 45000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('หมดเวลารอ (เน็ตช้าเกินไป) — ลองใหม่อีกครั้ง');
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function _get(params = {}) {
+    const url = new URL(APPS_SCRIPT_URL);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    const res = await fetch(url.toString(), { redirect: 'follow' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async function loadAllLogs() {
+    if (!isReady()) return {};
+    const data = await _get({ action: 'loadAll' });
+    return data.logs || {};
+  }
+
+  async function saveLog(e) {
+    if (!isReady()) return;
+    await _post({ action: 'saveLog', data: e });
+  }
+
+  async function loadCustomTasks() {
+    if (!isReady()) return [];
+    const data = await _get({ action: 'loadAll' });
+    return data.customTasks || [];
+  }
+
+  async function saveCustomTask(task) {
+    if (!isReady()) return;
+    await _post({ action: 'saveCustomTask', data: task });
+  }
+
+  async function deleteCustomTask(id) {
+    if (!isReady()) return;
+    await _post({ action: 'deleteCustomTask', id });
+  }
+
+  // ย่อ/บีบอัดรูป (ไม่ทำกับวิดีโอ) — แก้ปัญหารูปมือถือไฟล์ใหญ่/HEIC ทำให้อัพช้าหรือ timeout
+  function compressImage(file, maxWidth = 1600, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      const cleanup = () => URL.revokeObjectURL(url);
+      img.onload = () => {
+        cleanup();
+        let { width, height } = img;
+        if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => {
+          if (!blob) { reject(new Error('บีบอัดรูปไม่สำเร็จ')); return; }
+          const newName = file.name.replace(/\.(heic|heif|HEIC|HEIF)$/i, '.jpg');
+          resolve(new File([blob], newName, { type: 'image/jpeg' }));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => { cleanup(); reject(new Error('เปิดรูปไม่สำเร็จ (อาจเป็นไฟล์ที่ browser นี้ไม่รองรับ)')); };
+      img.src = url;
+    });
+  }
+
+  async function uploadFile(file, taskId, dateStr) {
+    if (!isReady()) return '';
+    let fileToSend = file;
+    if (file.type && file.type.startsWith('image/') && file.type !== 'image/gif') {
+      try { fileToSend = await compressImage(file); }
+      catch (e) { console.warn('compress failed, ส่งไฟล์ต้นฉบับแทน:', e); }
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const base64 = ev.target.result.split(',')[1];
+          const data = await _post({
+            action: 'uploadFile',
+            base64, mimeType: fileToSend.type || file.type,
+            fileName: `${Date.now()}_${fileToSend.name || file.name}`,
+            taskId, dateStr,
+          });
+          resolve(data.url || '');
+        } catch (e) { reject(e); }
+      };
+      reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
+      reader.readAsDataURL(fileToSend);
+    });
+  }
+
+  // stub compat
+  function isSignedIn() { return isReady(); }
+  function signIn()  {}
+  function signOut() {}
+  async function ensureSheetHeaders() {}
+
+  return { isReady, isSignedIn, signIn, signOut, ensureSheetHeaders, saveLog, loadAllLogs, saveCustomTask, deleteCustomTask, loadCustomTasks, uploadFile };
+})();
+
+// ── UI: ปุ่ม Login Google ──────────────────────────────────
+function manualSync() {
+  if (!GStorage.isReady()) { showToast('⚠️ APPS_SCRIPT_URL not configured'); return; }
+  const btn = document.getElementById('syncBtn');
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  Promise.all([
+    GStorage.loadAllLogs().then(logs => { Object.assign(LOG, logs); }),
+    GStorage.loadCustomTasks().then(tasks => { if (tasks && tasks.length > 0) customTasks = tasks; }),
+  ]).then(() => {
+    lsSave(); renderAll();
+    showToast(L().ui.syncOk||'✅ Sync OK!');
+  }).catch(e => {
+    showToast(L().ui.syncFail||'⚠️ Sync failed: ' + (e?.message || e));
+  }).finally(() => {
+    if (btn) { btn.textContent = '🔄'; btn.disabled = false; }
+  });
+}
+
+// ── โหลดข้อมูลครั้งแรกจาก Apps Script ──────────────────
+(async () => {
+  if (!GStorage.isReady()) { renderAll(); return; }
+  try {
+    const [logs, tasks] = await Promise.all([
+      GStorage.loadAllLogs(),
+      GStorage.loadCustomTasks(),
+    ]);
+    Object.assign(LOG, logs);
+    if (tasks && tasks.length > 0) customTasks = tasks;
+    lsSave();
+  } catch(e) { console.warn('initial load failed:', e); }
+  renderAll();
+})();
+
+</script>
+</body>
+</html>
